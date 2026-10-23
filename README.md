@@ -3,6 +3,24 @@
 `tap_to_top.koplugin` moves a tapped text line to the top of the screen in
 KOReader's *continuous* View Mode.
 
+## See it in action
+
+<p align="center">
+  <img src="docs/demos/tap-to-top-text.gif" width="480" alt="Two taps in KOReader bring the selected text lines to the top of the screen.">
+</p>
+
+<table>
+  <tr>
+    <th>Images and PDFs</th>
+    <th>Conflicting tap actions</th>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/demos/tap-to-top-images-pdf.gif" width="360" alt="Tap an image detail, then a line on the next visible PDF page, to move each position to the top."></td>
+    <td width="50%"><img src="docs/demos/tap-to-top-conflicting-actions.gif" width="360" alt="Choose two-finger tap for saved highlights, then right-click a highlight to open its menu."></td>
+  </tr>
+</table>
+
+Captured in KOReader with Tap to top v1.3.6. Teal markers show where to tap.
 
 ## Behavior and settings
 
