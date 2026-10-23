@@ -68,7 +68,7 @@ local TAP_TO_TOP_CORNER_HOLD_ZONES = {
 
 local TapToTop = WidgetContainer:extend{
     name = "tap_to_top",
-    version = "1.4.0",
+    version = "1.4.1",
     is_doc_only = true,
     settings_data = nil,
     enabled = DEFAULT_TAP_TO_TOP_ENABLED,
@@ -303,8 +303,8 @@ function TapToTop:updateGestureDetection(ges)
     end
     -- Two-finger targeting uses the midpoint, so allow the pair to form before
     -- testing its target. This does not introduce a single-tap timeout.
-    for _, mode in pairs(self.action_modes) do
-        if mode == "two_finger_tap" and input.allow_concurrent_taps then
+    for action, mode in pairs(self.action_modes) do
+        if mode == "two_finger_tap" and self:isTapActionEnabled(action) and input.allow_concurrent_taps then
             self.input_overrides.allow_concurrent_taps = {
                 value = input.allow_concurrent_taps, forced = false,
             }
@@ -611,7 +611,7 @@ function TapToTop:onTapToTop(ges)
     end
     -- Let KOReader resolve its optional enlarged link tap areas as well as
     -- exact link hits when the user keeps the original single-tap action.
-    if self.action_modes.links == "tap" and self.ui.link
+    if self.action_modes.links == "tap" and self:isTapActionEnabled("links") and self.ui.link
             and type(self.ui.link.onTap) == "function" and self.ui.link:onTap(nil, ges) then
         return true
     end
@@ -647,8 +647,15 @@ function TapToTop:getHoldMovementDistance(ges)
     return math.sqrt(delta_x * delta_x + delta_y * delta_y)
 end
 
+function TapToTop:isTapActionEnabled(action)
+    if action ~= "links" then return true end
+    local enabled = G_reader_settings and G_reader_settings:readSetting("tap_to_follow_links")
+    return enabled == nil or enabled == true
+end
+
 function TapToTop:hasLinkAtGesture(ges)
-    if not (self.ui.link and type(self.ui.link.getLinkFromGes) == "function") then
+    if not self:isTapActionEnabled("links")
+            or not (self.ui.link and type(self.ui.link.getLinkFromGes) == "function") then
         return false
     end
     local ok, link = pcall(self.ui.link.getLinkFromGes, self.ui.link, ges)
@@ -772,6 +779,7 @@ function TapToTop:onTapToTopHoldPan(ges)
 end
 
 function TapToTop:performNativeTapAction(action, ges)
+    if not self:isTapActionEnabled(action) then return true end
     local tap = self:asTapGesture(ges)
     if action == "links" and self.ui.link and type(self.ui.link.onTap) == "function" then
         self.ui.link:onTap(nil, tap)
@@ -875,7 +883,7 @@ function TapToTop:addToMainMenu(menu_items)
     local action_items = {}
     local function usesLongPress()
         for action_index, action in ipairs(TAP_ACTIONS) do
-            if self.action_modes[action.key] == "hold" then return true end
+            if self:isTapActionEnabled(action.key) and self.action_modes[action.key] == "hold" then return true end
         end
         return false
     end
@@ -917,7 +925,8 @@ function TapToTop:addToMainMenu(menu_items)
                 radio = true,
                 checked_func = function() return self.action_modes[action_key] == mode_key end,
                 enabled_func = function()
-                    return mode_key ~= "two_finger_tap" or IS_DESKTOP_SDL or Device:hasMultitouch()
+                    return self:isTapActionEnabled(action_key)
+                        and (mode_key ~= "two_finger_tap" or IS_DESKTOP_SDL or Device:hasMultitouch())
                 end,
                 callback = function(touchmenu_instance)
                     self:setActionMode(action_key, mode_key)
@@ -929,6 +938,9 @@ function TapToTop:addToMainMenu(menu_items)
             text_func = function()
                 return T(_("%1: %2"), action_title, ACTION_MODE_TITLES[self.action_modes[action_key]])
             end,
+            enabled_func = function() return self:isTapActionEnabled(action_key) end,
+            help_text = action_key == "links"
+                and _([[This action follows KOReader's "Tap to follow links" setting. Turn that setting on in KOReader's Links menu to configure this action.]]) or nil,
             sub_item_table = modes,
         }
     end

@@ -323,6 +323,32 @@ assert(timers[0].double_tap)
 single(415, 28.15)
 assert(#ui.scrolls == scrolls + 1 and not timers[0].double_tap,
     'a pending highlight double tap must not delay a later ordinary tap')
+
+-- Native link taps off removes the link conflict from recognition, too.
+local native_link_taps = false
+G_reader_settings.readSetting = function(self, key)
+    if key == 'tap_to_follow_links' then return native_link_taps end
+end
+plugin:setActionMode('highlights', 'hold')
+plugin:setActionMode('links', 'double_tap')
+immediate(350, 29)
+assert(target_link_calls == 1, 'disabled native links must not be followed')
+plugin:setActionMode('links', 'two_finger_tap')
+feed(0, 2001, 30, 350)
+assert(input.allow_concurrent_taps, 'a disabled link binding must not change native multitouch recognition')
+feed(0, -1, 30.05, 350)
+if desktop then
+    feed(1, 1, 31, 350)
+    feed(1, -1, 31.05, 350)
+    assert(emitted[#emitted] == 'tap' and target_link_calls == 1,
+        'disabled links must not convert right-clicks to their stored alternate input')
+end
+native_link_taps = true
+plugin:setActionMode('links', 'double_tap')
+single(350, 32)
+assert(timers[0].double_tap, 'reenabling native link taps must restore the saved double-tap timing')
+single(350, 32.15)
+assert(target_link_calls == 2, 'reenabled native links must activate normally')
 plugin:onCloseDocument()
 assert(screenshots == 0, 'normal taps and right-click aliases must not trigger the screenshot shortcut')
 assert(detector.feedEvent == original_feed_event, 'desktop input wrapper must be removed on document close')

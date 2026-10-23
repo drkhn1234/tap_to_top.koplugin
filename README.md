@@ -49,8 +49,7 @@ Captured in KOReader. Teal markers show where to tap, hold, and move.
 > 
 >  <img width="348" height="276" alt="image" src="https://github.com/user-attachments/assets/2f9faad7-c30d-4fe6-bda5-0cff823a2826"/> <br> 
 >  **_MENU** is for *TOP MENU*,&ensp;**_CONFIG** is for *BOTTOM MENU*.&ensp;**_EXT** suffix is for extra/secondary zones of TOP and BOTTOM menus, it is recommended to disable extra/secondary zones by setting its values to 0 for a better plugin experience.
-- Inside the tap-to-top region, opening Highlight menu is done by double tap instead of a tap in order to not conflict with the plugin behaviour (outside the tap-to-tap region, it still uses tap to open). Links keep their original single-tap behavior
-  by default. Both can be configured independently under **Conflicting tap actions** in the plugin settings page.
+- As both the plugin and open highlighted text menu action use single-tap in screen to activate their functions, a compromise is made which sets double tap to activate highlighted text menu while inside the plugin's active region (screen area left after excluding the aforementioned margins). More about in **Conflicting tap actions** below.
 - Both non-reflowable (PDF, DJVU, etc.) and reflowable (EPUB, MOBI, etc.) are supported.
 
 ## Conflicting tap actions
@@ -58,14 +57,24 @@ Captured in KOReader. Teal markers show where to tap, hold, and move.
 ### `Top Panel > Settings > Taps and gestures > Scrolling > Tap to top > Conflicting tap actions`
 
 Choose how to open **Links** and **Highlight menu** inside the tap-to-top
-region:
+active region:
 
 - **Keep original single tap** leaves that action on single tap instead of
   scrolling the tapped link's line to the top.
-- **Long press**, **Double tap**, or **Two-finger tap** replaces single tap with
-  tap-to-top and moves the original action to the selected gesture.
+- **Long press**, **Double tap**, or **Two-finger tap** moves the original action to the selected gesture.
 
-Outside the tap-to-top region, all reader actions use KOReader's normal behavior. Reader menus, the status
+**Links** respects KOReader's native **Tap to follow links** setting. When it
+is off, the Links row is faded and inactive, and link locations do not reserve
+an input or introduce a double-tap wait. Turning it back on restores the saved
+gesture choice. A disabled link binding also leaves the movement threshold
+inactive unless saved highlights use long press.
+
+<p align="center">
+  **Tap-to-top region action binds**\
+  *Highlight Menu Activate*: Double Tap&emsp; *Open Link*: Single-tap
+</p>
+
+Outside the tap-to-top active region, all reader actions use KOReader's normal behavior. Reader menus, the status
 bar, and assigned corner tap zones keep their normal behavior.
 
 On PC, **Two-finger tap (right-click)** also accepts the touchpad's two-finger
@@ -76,16 +85,13 @@ selection when the drag distance reaches **Long-press movement
 threshold** hence you can select text even when long press is bound to open link or highlight menu action.
 The threshold defaults to **32 px**. Its button is always visible in
 **Conflicting tap actions**: faded when no action uses long press, and active
-and editable when at least one does. Hold the button for an explanation.
+and editable when at least one does.
 
 To look up a single word inside a saved highlight while its menu uses
 **Long press**, hold the word, move past the threshold while staying within
 that word, and release. The dictionary opens for that word. Dragging across
 words selects a passage instead. A stationary long press opens the highlight
 menu.
-
-New installs use **Double tap** for saved highlights. Existing saved choices
-are retained when upgrading.
 
 ## Tests
 
@@ -104,6 +110,3 @@ luajit tests/test_tap_actions.lua /path/to/koreader/frontend
 luajit tests/test_gesture_detection.lua /path/to/koreader/frontend
 luajit tests/test_gesture_detection.lua /path/to/koreader/frontend desktop
 ```
-
-This plugin was extracted from
-[velocity_scroll.koplugin](https://github.com/drkhn1234/velocity_scroll.koplugin).
