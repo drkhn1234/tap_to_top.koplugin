@@ -26,6 +26,22 @@ local DEFAULT_TAP_REGION_MARGINS = {
 }
 local DEFAULT_LONG_PRESS_MOVEMENT_THRESHOLD = 40
 local MIN_TAP_REGION_SIZE_PERCENT = 5
+local TAP_ACTIONS = {
+    { key = "links", title = _("Links"), default = "tap" },
+    { key = "highlights", title = _("Saved highlights"), default = "hold" },
+    { key = "page_turns", title = _("Page turns"), default = "none" },
+}
+local ACTION_MODES = {
+    { key = "tap", title = _("Keep original single tap") },
+    { key = "hold", title = _("Long press") },
+    { key = "double_tap", title = _("Double tap") },
+    { key = "two_finger_tap", title = _("Two-finger tap") },
+    { key = "none", title = _("Tap to top only") },
+}
+local ACTION_MODE_TITLES = {}
+for _, mode in ipairs(ACTION_MODES) do
+    ACTION_MODE_TITLES[mode.key] = mode.title
+end
 
 local TAP_TO_TOP_UI_TAP_ZONES = {
     "readerfooter_tap",
@@ -106,11 +122,20 @@ function TapToTop:init()
         "long_press_movement_threshold", DEFAULT_LONG_PRESS_MOVEMENT_THRESHOLD
     ))
     self:normalizeTapRegionMargins()
+    self.action_modes = {}
+    self.input_overrides = {}
+    local saved_modes = self.settings_data:readSetting("action_modes", {})
+    if type(saved_modes) ~= "table" then saved_modes = {} end
+    for _, action in ipairs(TAP_ACTIONS) do
+        local mode = saved_modes[action.key]
+        self.action_modes[action.key] = ACTION_MODE_TITLES[mode] and mode or action.default
+    end
 
     self:onDispatcherRegisterActions()
     self.ui.menu:registerToMainMenu(self)
     self.ui:registerPostReaderReadyCallback(function()
         self:registerTouchZones()
+        self:updateGestureDetection()
     end)
 end
 
@@ -156,8 +181,57 @@ function TapToTop:registerTouchZones()
 end
 
 function TapToTop:onCloseDocument()
+    self:updateGestureDetection(true)
     self.tap_hold_tracking = nil
     self.tap_to_top_suppressed = false
+end
+
+function TapToTop:updateGestureDetection(restore)
+    local needs_double_tap, needs_two_finger_tap = false, false
+    local changed = {}
+    if not restore and self.enabled and self:isContinuousMode() then
+        for _, mode in pairs(self.action_modes) do
+            needs_double_tap = needs_double_tap or mode == "double_tap"
+            needs_two_finger_tap = needs_two_finger_tap or mode == "two_finger_tap"
+        end
+    end
+    for key, needed in pairs({
+        disable_double_tap = needs_double_tap,
+        allow_concurrent_taps = needs_two_finger_tap,
+    }) do
+        if needed then
+            if not self.input_overrides[key] then
+                self.input_overrides[key] = { value = self.ui[key] }
+            end
+            self.ui[key] = false
+            changed[key] = true
+        elseif self.input_overrides[key] then
+            if self.ui[key] == false then
+                self.ui[key] = self.input_overrides[key].value
+            end
+            self.input_overrides[key] = nil
+            changed[key] = true
+        end
+    end
+    -- UIManager applies these reader flags again when an overlay closes.
+    -- Only update the live detector while the reader itself is on top.
+    if Device.input and UIManager.getTopmostVisibleWidget
+            and UIManager:getTopmostVisibleWidget() == self.ui then
+        if changed.disable_double_tap then
+            Device.input.disable_double_tap = self.ui.disable_double_tap ~= false
+        end
+        if changed.allow_concurrent_taps then
+            Device.input.allow_concurrent_taps = self.ui.allow_concurrent_taps == true
+        end
+    end
+end
+
+function TapToTop:onChangeViewMode()
+    self:updateGestureDetection()
+end
+
+function TapToTop:onSetScrollMode()
+    self:updateGestureDetection()
 end
 
 function TapToTop:normalizeTapRegionMargins()
@@ -257,6 +331,27 @@ function TapToTop:registerTapToTopZone()
             handler = function(ges)
                 return self:onTapToTop(ges)
             end,
+        },
+        {
+            id = "tap_to_top_double_tap",
+            ges = "double_tap",
+            screen_zone = self:getTapToTopZone(),
+            overrides = {
+                "double_tap_left_side", "double_tap_right_side",
+                "double_tap_top_left_corner", "double_tap_top_right_corner",
+                "double_tap_bottom_left_corner", "double_tap_bottom_right_corner",
+            },
+            handler = function(ges) return self:onAlternateTap(ges) end,
+        },
+        {
+            id = "tap_to_top_two_finger_tap",
+            ges = "two_finger_tap",
+            screen_zone = self:getTapToTopZone(),
+            overrides = {
+                "two_finger_tap_top_left_corner", "two_finger_tap_top_right_corner",
+                "two_finger_tap_bottom_left_corner", "two_finger_tap_bottom_right_corner",
+            },
+            handler = function(ges) return self:onAlternateTap(ges) end,
         },
         {
             id = "tap_to_top_hold",
@@ -407,6 +502,16 @@ function TapToTop:onTapToTop(ges)
     if self:shouldPreserveTapZone(ges) then
         return
     end
+    -- Let KOReader resolve its optional enlarged link tap areas as well as
+    -- exact link hits when the user keeps the original single-tap action.
+    if self.action_modes.links == "tap" and self.ui.link
+            and type(self.ui.link.onTap) == "function" and self.ui.link:onTap(nil, ges) then
+        return true
+    end
+    local action = self:getNativeTapAction(ges)
+    if action and self.action_modes[action] == "tap" then
+        return
+    end
 
     return self:scrollLineToTop(self:getTappedLineY(ges))
 end
@@ -465,8 +570,33 @@ function TapToTop:hasSavedHighlightAtGesture(ges)
     return false
 end
 
-function TapToTop:hasLongPressTapTarget(ges)
-    return self:hasLinkAtGesture(ges) or self:hasSavedHighlightAtGesture(ges)
+function TapToTop:getNativeTapAction(ges)
+    if self:hasLinkAtGesture(ges) then return "links" end
+    if self:hasSavedHighlightAtGesture(ges) then return "highlights" end
+    if self:matchesAnyRegisteredTouchZone(ges, { "tap_forward", "tap_backward" }) then
+        return "page_turns"
+    end
+end
+
+function TapToTop:asTapGesture(ges)
+    local tap = self:copyGesture(ges)
+    tap.ges = "tap"
+    return tap
+end
+
+function TapToTop:onAlternateTap(ges)
+    if not self.enabled or not self:isContinuousMode()
+            or not (ges and ges.pos and ges.pos.x and ges.pos.y) then
+        return
+    end
+    local tap = self:asTapGesture(ges)
+    if self:shouldPreserveTapZone(tap) then return end
+    local action = self:getNativeTapAction(tap)
+    if not action or self.action_modes[action] ~= ges.ges then return end
+    if not self.tap_to_top_suppressed then
+        self:performNativeTapAction(action, tap)
+    end
+    return true
 end
 
 function TapToTop:activateNativeLongPress(ges)
@@ -489,13 +619,17 @@ function TapToTop:onTapToTopHold(ges)
     if self:shouldPreserveHoldZone(ges) then
         return
     end
-    if not self:hasLongPressTapTarget(ges) then
+    local tap = self:asTapGesture(ges)
+    local action = self:getNativeTapAction(tap)
+    if self:shouldPreserveTapZone(tap) or not action
+            or self.action_modes[action] ~= "hold" then
         self.tap_hold_tracking = nil
         return
     end
 
     self.tap_hold_tracking = {
         mode = "tap",
+        action = action,
         gesture = self:copyGesture(ges),
         start_x = ges.pos.x,
         start_y = ges.pos.y,
@@ -520,14 +654,20 @@ function TapToTop:onTapToTopHoldPan(ges)
     return true
 end
 
-function TapToTop:performLongPressTapAction(ges)
-    if self.ui.link and type(self.ui.link.onTap) == "function"
-            and self.ui.link:onTap(nil, ges) then
-        return true
-    end
-    if self.ui.highlight and type(self.ui.highlight.onTap) == "function"
-            and self.ui.highlight:onTap(nil, ges) then
-        return true
+function TapToTop:performNativeTapAction(action, ges)
+    local tap = self:asTapGesture(ges)
+    if action == "links" and self.ui.link and type(self.ui.link.onTap) == "function" then
+        self.ui.link:onTap(nil, tap)
+    elseif action == "highlights" and self.ui.highlight
+            and type(self.ui.highlight.onTap) == "function" then
+        self.ui.highlight:onTap(nil, tap)
+    elseif action == "page_turns" then
+        for _, zone_id in ipairs({ "tap_forward", "tap_backward" }) do
+            if self:matchesRegisteredTouchZone(tap, zone_id) then
+                self.ui._zones[zone_id].handler(tap)
+                break
+            end
+        end
     end
     return true
 end
@@ -551,7 +691,7 @@ function TapToTop:onTapToTopHoldRelease(ges)
         end
         return true
     end
-    return self:performLongPressTapAction(tracking.gesture)
+    return self:performNativeTapAction(tracking.action, tracking.gesture)
 end
 
 function TapToTop:clearNativePanState()
@@ -573,6 +713,7 @@ function TapToTop:setEnabled(enabled, notify)
     self.settings_data:saveSetting("enabled", self.enabled)
     self.updated = true
     self:onFlushSettings()
+    self:updateGestureDetection()
 
     if notify then
         Notification:notify(T(
@@ -581,6 +722,17 @@ function TapToTop:setEnabled(enabled, notify)
         ))
     end
     return true
+end
+
+function TapToTop:setActionMode(action_key, mode)
+    if self.action_modes[action_key] == nil or not ACTION_MODE_TITLES[mode] then return end
+    self.action_modes[action_key] = mode
+    self.tap_hold_tracking = nil
+    self.tap_to_top_suppressed = false
+    self.settings_data:saveSetting("action_modes", self.action_modes)
+    self.updated = true
+    self:onFlushSettings()
+    self:updateGestureDetection()
 end
 
 function TapToTop:onToggleTapToTop()
@@ -609,6 +761,30 @@ function TapToTop:setTapRegionMargin(key, opposite_key, value)
 end
 
 function TapToTop:addToMainMenu(menu_items)
+    local action_items = {}
+    for _, action in ipairs(TAP_ACTIONS) do
+        local modes = {}
+        for _, mode in ipairs(ACTION_MODES) do
+            modes[#modes + 1] = {
+                text = mode.title,
+                radio = true,
+                checked_func = function() return self.action_modes[action.key] == mode.key end,
+                enabled_func = function()
+                    return mode.key ~= "two_finger_tap" or Device:hasMultitouch()
+                end,
+                callback = function(touchmenu_instance)
+                    self:setActionMode(action.key, mode.key)
+                    if touchmenu_instance then touchmenu_instance:updateItems() end
+                end,
+            }
+        end
+        action_items[#action_items + 1] = {
+            text_func = function()
+                return T(_("%1: %2"), action.title, ACTION_MODE_TITLES[self.action_modes[action.key]])
+            end,
+            sub_item_table = modes,
+        }
+    end
     local function tapRegionMarginItem(title, key, opposite_key)
         return {
             text_func = function()
@@ -654,6 +830,11 @@ function TapToTop:addToMainMenu(menu_items)
                 end,
             },
             {
+                text = _("Tap actions"),
+                help_text = _("Choose which single taps become tap-to-top. Assign the original action to long press, double tap, or two-finger tap, keep its original single tap, or use tap-to-top only. Menu, status bar, and assigned corner tap zones keep their normal actions."),
+                sub_item_table = action_items,
+            },
+            {
                 text = _("Tap-to-top region"),
                 sub_item_table = {
                     tapRegionMarginItem(_("Left margin"), "tap_region_left_margin", "tap_region_right_margin"),
@@ -671,7 +852,7 @@ function TapToTop:addToMainMenu(menu_items)
                         callback = function(touchmenu_instance)
                             UIManager:show(SpinWidget:new{
                                 title_text = _("Long-press movement threshold"),
-                                info_text = _("On a link or saved highlight, move this far in any direction before release to select the word instead of performing its tap action. A hold-drag selects immediately."),
+                                info_text = _("For actions assigned to long press, move this far before release to select text instead of performing the original tap action. A hold-drag selects immediately."),
                                 value = self.long_press_movement_threshold,
                                 value_min = 5,
                                 value_max = math.max(200, math.floor(Screen:getWidth() / 3)),

@@ -16,11 +16,41 @@ Reader menu -> Scrolling -> Tap to top
   stays at least `5%` wide and high.
 - Top and bottom menu tap zones keep their normal behavior. Corner tap and long-press zones take priority when an action is assigned,
   unassigned corners remain part of the configured region.
-- Inside the tap-to-top region, tap on highlighted text to open its properties menu action is overridden by the plugin and the action is performed by a long press instead. Tap on links behaviour is preserved but can be changed from the settings of the plugin, as well as highlight behaviour.
+- Inside the tap-to-top region, links keep their original single-tap behavior
+  by default. Saved highlight properties open on long press instead. Both can
+  be configured independently under **Tap actions**.
 - Other long presses pass through to KOReader, preserving word selection,
   dictionary lookup, images, hold-drag selection, and release behavior.
-- Both paged documents in  and reflowable documents in scroll mode
+- Both paged documents in continuous mode and reflowable documents in scroll mode
   are supported. Mouse-wheel input keeps its normal behavior.
+
+## Tap actions
+
+Open **Reader menu -> Scrolling -> Tap to top -> Tap actions**. Choose a setting
+independently for **Links**, **Saved highlights**, and **Page turns**:
+
+- **Keep original single tap** leaves that action on single tap instead of
+  scrolling the tapped line to the top.
+- **Long press**, **Double tap**, or **Two-finger tap** replaces single tap with
+  tap-to-top and moves the original action to the selected gesture.
+- **Tap to top only** replaces single tap without assigning a replacement
+  gesture. This is the default for page turns.
+
+The replacement action uses the gesture's location. Two-finger tap uses the
+midpoint between the fingers. Page turns use KOReader's existing forward and
+backward tap zones. Reader menus, the status bar, and assigned corner tap zones
+keep their normal behavior.
+
+Long presses assigned to an action run on release. Dragging starts native text
+selection; release-only movement uses the existing **Long-press movement
+threshold**, which defaults to `40 px`. Unclaimed long presses retain normal
+selection and dictionary behavior.
+
+Choosing double tap enables its detection while the plugin is active in scroll
+mode. Single taps then wait for KOReader's usual double-tap interval. Choosing
+two-finger tap enables combined two-finger recognition; that choice is available
+on multitouch devices. The reader's previous gesture settings are restored when
+the feature is disabled or no longer needs those gestures.
 
 ## Upgrading from the combined velocity scroll plugin
 
@@ -41,6 +71,15 @@ Run from the repository directory with LuaJIT:
 
 ```sh
 luajit tests/test_tap_to_top.lua
+luajit tests/test_tap_actions.lua
+```
+
+To also check KOReader's actual touch-zone ordering and gesture detection, pass
+the `frontend` directory of a KOReader source checkout:
+
+```sh
+luajit tests/test_tap_actions.lua /path/to/koreader/frontend
+luajit tests/test_gesture_detection.lua /path/to/koreader/frontend
 ```
 
 This plugin was extracted from
