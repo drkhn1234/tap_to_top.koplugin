@@ -1,33 +1,35 @@
 # Tap to top
 
 `tap_to_top.koplugin` moves a tapped text line to the top of the screen in
-KOReader's continuous/scroll mode.
+KOReader's continuous View Mode mode.
 
-```text
-Reader menu -> Scrolling -> Tap to top
-```
 
 ## Behavior and settings
 
-- A tap inside the configured region aligns the top of the tapped word with the
-  top of the screen. Whitespace uses the tap position instead.
-- Left, right, top, and bottom percentage margins exclude parts of the screen.
-  Defaults are `20%` left, `20%` right, `0%` top, and `10%` bottom; the region
-  stays at least `5%` wide and high.
+- **Tap on a word/line to align (its page level) to the top of the screen.**
+> [!NOTE]
+> The plugin is smart enough to detect word/line height boundaries. It doesn't merely scroll pixels at tap position to top. Therefore, you don't have to be highly precise when tapping on line of words and worry if the words will be clipped by the edge of the screen.
+>
+> Taps on whitespace or images use the exact tap position.
+- In the plugin settings: left (20%), right (20%), top (0%), and bottom (0%) margins exempt parts of the screen from the reach of the plugin, so that left/right page turns continue working without being affected by the new tap behaviour.
+
 - Top and bottom menu tap zones keep their normal behavior. Corner tap and long-press zones take priority when an action is assigned,
   unassigned corners remain part of the configured region.
-- Inside the tap-to-top region, links keep their original single-tap behavior
-  by default. Saved highlight properties open on long press instead. Both can
-  be configured independently under **Tap actions**.
-- Other long presses pass through to KOReader, preserving word selection,
-  dictionary lookup, images, hold-drag selection, and release behavior.
-- Both paged documents in continuous mode and reflowable documents in scroll mode
-  are supported. Mouse-wheel input keeps its normal behavior.
+> [!TIP]
+> If you find yourself accidentally activating Top or Bottom menus while using tap-to-top frequently on screen positions that happen to collide with KOReader Menu tap zones, a solution is to adjust Menu zone values at:\
+> `Top Panel > Tools > More tools > Advance settings`, these keys:
+> 
+>  <img width="348" height="276" alt="image" src="https://github.com/user-attachments/assets/2f9faad7-c30d-4fe6-bda5-0cff823a2826"/> <br> 
+>  **_MENU** is for *TOP MENU*,&ensp;**_CONFIG** is for *BOTTOM MENU*.&ensp;**_EXT** suffix is for extra/secondary zones of TOP and BOTTOM menus, it is recommended to disable extra/secondary zones by setting its values to 0 for a better plugin experience.
+- Inside the tap-to-top region, opening Highlight menu is done by long press instead of a tap in order to not conflict with the plugin behaviour (outside the tap-to-tap region, it still uses tap to open). Links keep their original single-tap behavior
+  by default. Both can be configured independently under **Tap actions** in the plugin settings page.
+- Both non-reflowable (PDF, DJVU, etc.) and reflowable (EPUB, MOBI, etc.) are supported.
 
 ## Tap actions
 
-Open **Reader menu -> Scrolling -> Tap to top -> Tap actions**. Choose a setting
-independently for **Links**, **Saved highlights**, and **Page turns**:
+### `Top Panel > Settings > Taps and gestures > Scrolling > Tap to top > Tap actions`
+
+Configure touch input (long press, double tap, two-finger tap) for interacting with **Links**, **Text Highlights**, and **Page turns**:
 
 - **Keep original single tap** leaves that action on single tap instead of
   scrolling the tapped line to the top.
@@ -51,19 +53,6 @@ mode. Single taps then wait for KOReader's usual double-tap interval. Choosing
 two-finger tap enables combined two-finger recognition; that choice is available
 on multitouch devices. The reader's previous gesture settings are restored when
 the feature is disabled or no longer needs those gestures.
-
-## Upgrading from the combined velocity scroll plugin
-
-Install this plugin alongside the updated velocity scroll plugin. On first use,
-it imports the tap enable state, four region margins, and long-press movement
-threshold from `settings/velocity_scroll.lua`. The older
-`long_press_sideways_threshold` setting is also supported. Existing tap-to-top
-settings take priority, and migration never writes to the velocity settings file.
-
-Keep the old settings file until the first import completes. Later changes are
-saved independently in `settings/tap_to_top.lua`; velocity scroll can then be
-uninstalled if you only want tap-to-top. Use the split version of velocity scroll
-when running both plugins together, so the old combined tap handler is removed.
 
 ## Tests
 
