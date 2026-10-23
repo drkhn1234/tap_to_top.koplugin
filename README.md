@@ -29,30 +29,36 @@ KOReader's continuous View Mode mode.
 
 ### `Top Panel > Settings > Taps and gestures > Scrolling > Tap to top > Tap actions`
 
-Configure touch input (long press, double tap, two-finger tap) for interacting with **Links**, **Text Highlights**, and **Page turns**:
+Choose how to open **Links** and **Saved highlights** inside the tap-to-top
+region:
 
 - **Keep original single tap** leaves that action on single tap instead of
   scrolling the tapped line to the top.
 - **Long press**, **Double tap**, or **Two-finger tap** replaces single tap with
   tap-to-top and moves the original action to the selected gesture.
-- **Tap to top only** replaces single tap without assigning a replacement
-  gesture. This is the default for page turns.
+
+Both actions always remain available. Links default to their original single tap;
+saved highlights default to long press. Tap-to-top itself always uses a single
+tap and cannot be rebound to another gesture. Page turns have no plugin setting:
+single taps in the region scroll to the tapped line, except where a link or
+highlight keeps its original single tap.
 
 The replacement action uses the gesture's location. Two-finger tap uses the
-midpoint between the fingers. Page turns use KOReader's existing forward and
-backward tap zones. Reader menus, the status bar, and assigned corner tap zones
-keep their normal behavior.
+midpoint between the fingers. Outside the configured region, all reader actions,
+including page turns, use KOReader's normal behavior. Reader menus, the status
+bar, and assigned corner tap zones keep their normal behavior.
 
 Long presses assigned to an action run on release. Dragging starts native text
 selection; release-only movement uses the existing **Long-press movement
 threshold**, which defaults to `40 px`. Unclaimed long presses retain normal
 selection and dictionary behavior.
 
-Choosing double tap enables its detection while the plugin is active in scroll
-mode. Single taps then wait for KOReader's usual double-tap interval. Choosing
-two-finger tap enables combined two-finger recognition; that choice is available
-on multitouch devices. The reader's previous gesture settings are restored when
-the feature is disabled or no longer needs those gestures.
+Double tap detection applies to touches starting inside the region while the
+plugin is active in scroll mode. Single taps there wait for KOReader's usual
+double-tap interval; taps outside the region keep their normal timing. Choosing
+two-finger tap enables combined two-finger recognition inside the region; that
+choice is available on multitouch devices. The reader's gesture preferences stay
+unchanged.
 
 ## Tests
 

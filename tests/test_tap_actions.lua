@@ -78,6 +78,7 @@ local function create(mode, target, modes, flags)
     return plugin, ui, calls
 end
 local function activate(ui, mode, x)
+    ui:dispatch(S.gesture('touch', x, 500))
     if mode == 'hold' then
         ui:dispatch(S.gesture('hold', x, 500))
         return ui:dispatch(S.gesture('hold_release', x, 500))
@@ -86,15 +87,15 @@ local function activate(ui, mode, x)
 end
 local combinations = 0
 for _, document_mode in ipairs({ 'rolling', 'paging' }) do
-    for _, action in ipairs({ 'links', 'highlights', 'page_turns' }) do
-        for _, mode in ipairs({ 'tap', 'hold', 'double_tap', 'two_finger_tap', 'none' }) do
+    for _, action in ipairs({ 'links', 'highlights' }) do
+        for _, mode in ipairs({ 'tap', 'hold', 'double_tap', 'two_finger_tap' }) do
             local plugin, ui, calls = create(document_mode, action, { [action] = mode })
-            local count = action == 'page_turns' and 'forward' or action
+            local count = action
             assert(ui:dispatch(S.gesture('tap', 350, 500)))
             assert(#ui.scrolls == (mode == 'tap' and 0 or 1), 'single-tap override must respect the action setting')
             assert(calls[count] == (mode == 'tap' and 1 or 0), 'native tap action must run exactly once when preserved')
             local before = #ui.scrolls
-            if mode ~= 'tap' and mode ~= 'none' then
+            if mode ~= 'tap' then
                 assert(activate(ui, mode, 350))
                 assert(calls[count] == 1, 'chosen alternate gesture must activate the original action once')
                 assert(#ui.scrolls == before, 'alternate action must not also tap-to-top')
@@ -122,9 +123,37 @@ activate(ui, 'hold', 350)
 assert(calls.highlights == 0 and calls.links == 0 and calls.hold == 1, 'link precedence must not replay a highlight action')
 activate(ui, 'double_tap', 350)
 assert(calls.links == 1 and calls.highlights == 0)
-plugin, ui, calls = create('paging', 'page_turns', { page_turns = 'two_finger_tap' })
-activate(ui, 'two_finger_tap', 200)
-assert(calls.backward == 1 and calls.forward == 0, 'replay the native backward tap zone at the gesture position')
+-- Removed choices migrate to defaults; ordinary taps in the region always align.
+plugin, ui, calls = create('paging', 'plain', {
+    links = 'none', highlights = 'none', page_turns = 'two_finger_tap',
+})
+assert(plugin.action_modes.links == 'tap' and plugin.action_modes.highlights == 'hold')
+assert(plugin.action_modes.page_turns == nil)
+assert(S.settings['/settings/tap_to_top.lua'].action_modes.page_turns == nil)
+plugin:setActionMode('links', 'none')
+plugin:setActionMode('highlights', 'none')
+plugin:setActionMode('page_turns', 'tap')
+assert(plugin.action_modes.links == 'tap' and plugin.action_modes.highlights == 'hold'
+    and plugin.action_modes.page_turns == nil, 'removed choices cannot disable actions or restore page turns')
+ui:dispatch(S.gesture('tap', 350, 500))
+assert(#ui.scrolls == 1 and calls.forward == 0 and calls.backward == 0)
+for _, kind in ipairs({ 'hold', 'double_tap', 'two_finger_tap' }) do
+    local before = #ui.scrolls
+    activate(ui, kind, 350)
+    assert(#ui.scrolls == before and calls.forward == 0 and calls.backward == 0,
+        'other inputs must never invoke tap-to-top or displaced page turns')
+end
+for _, mode in ipairs({ 'tap', 'hold', 'double_tap', 'two_finger_tap' }) do
+    for _, document_mode in ipairs({ 'rolling', 'paging' }) do
+        plugin, ui, calls = create(document_mode, 'plain', { links = mode, highlights = mode })
+        ui:dispatch(S.gesture('touch', 550, 500))
+        ui:dispatch(S.gesture('tap', 550, 500))
+        ui:dispatch(S.gesture('touch', 50, 500))
+        ui:dispatch(S.gesture('tap', 50, 500))
+        assert(calls.forward == 1 and calls.backward == 1 and #ui.scrolls == 0,
+            'page turns outside the region must stay native for every configuration')
+    end
+end
 
 -- Native selection survives every mode that does not claim a stationary hold.
 plugin, ui, calls = create('rolling', 'highlights', { highlights = 'double_tap' })
@@ -136,30 +165,39 @@ ui:dispatch(S.gesture('hold_pan', 351, 500))
 ui:dispatch(S.gesture('hold_release', 351, 500))
 assert(calls.hold == 2 and calls.drag == 1 and calls.release == 2 and calls.highlights == 0)
 ui:dispatch(S.gesture('hold', 350, 500))
-plugin:setActionMode('highlights', 'none')
+plugin:setActionMode('highlights', 'tap')
 assert(not plugin.tap_hold_tracking, 'changing settings cancels pending replacement actions')
 ui:dispatch(S.gesture('hold_release', 350, 500))
 assert(calls.highlights == 0)
 
--- Mode choices persist, including false-valued input flags that must restore.
+-- Gesture detection changes only for contacts in the region; preferences stay native.
 plugin, ui = create('rolling', 'highlights', {}, { disable_double_tap = true, allow_concurrent_taps = true })
 plugin:setActionMode('highlights', 'double_tap')
-assert(ui.disable_double_tap == false and S.Device.input.disable_double_tap == false)
 plugin:setActionMode('links', 'two_finger_tap')
-assert(ui.allow_concurrent_taps == false and S.Device.input.allow_concurrent_taps == false)
+assert(ui.disable_double_tap == true and ui.allow_concurrent_taps == true)
+assert(S.Device.input.disable_double_tap == true and S.Device.input.allow_concurrent_taps == true)
+ui:dispatch(S.gesture('touch', 300, 500))
+assert(S.Device.input.disable_double_tap == false and S.Device.input.allow_concurrent_taps == false)
+ui:dispatch(S.gesture('touch', 550, 500))
+assert(S.Device.input.disable_double_tap == true and S.Device.input.allow_concurrent_taps == true,
+    'outside contacts must restore native timing and concurrent-tap recognition')
+ui:dispatch(S.gesture('touch', 300, 500))
 plugin:setEnabled(false)
 assert(ui.disable_double_tap == true and ui.allow_concurrent_taps == true)
 assert(S.Device.input.disable_double_tap == true and S.Device.input.allow_concurrent_taps == true)
 plugin:setEnabled(true)
-assert(ui.disable_double_tap == false and ui.allow_concurrent_taps == false)
+ui:dispatch(S.gesture('touch', 300, 500))
+assert(S.Device.input.disable_double_tap == false and S.Device.input.allow_concurrent_taps == false)
 ui.view.view_mode = 'page'
 plugin:onChangeViewMode()
-assert(ui.disable_double_tap == true and ui.allow_concurrent_taps == true)
+assert(S.Device.input.disable_double_tap == true and S.Device.input.allow_concurrent_taps == true)
 ui.view.view_mode = 'scroll'
 plugin:onChangeViewMode()
-assert(ui.disable_double_tap == false)
+ui:dispatch(S.gesture('touch', 300, 500))
+assert(S.Device.input.disable_double_tap == false)
 plugin:onCloseDocument()
 assert(ui.disable_double_tap == true and ui.allow_concurrent_taps == true)
+assert(S.Device.input.disable_double_tap == true and S.Device.input.allow_concurrent_taps == true)
 local reopened_ui = S.newUI('rolling')
 local reopened = S.load('main.lua', reopened_ui)
 assert(reopened.action_modes.highlights == 'double_tap' and reopened.action_modes.links == 'two_finger_tap')
@@ -168,20 +206,23 @@ assert(reopened.action_modes.highlights == 'double_tap' and reopened.action_mode
 plugin, ui = create('rolling', 'highlights', {}, { disable_double_tap = true })
 S.top_widget = { name = 'menu' }
 plugin:setActionMode('highlights', 'double_tap')
-assert(ui.disable_double_tap == false and S.Device.input.disable_double_tap == true)
+ui:dispatch(S.gesture('touch', 300, 500))
+assert(ui.disable_double_tap == true and S.Device.input.disable_double_tap == true)
 S.top_widget = ui
-plugin:updateGestureDetection()
+ui:dispatch(S.gesture('touch', 300, 500))
 assert(S.Device.input.disable_double_tap == false)
-plugin:setActionMode('highlights', 'none')
+plugin:setActionMode('highlights', 'tap')
 assert(ui.disable_double_tap == true and S.Device.input.disable_double_tap == true)
 
 plugin, ui = create('rolling', 'highlights', {}, { disable_double_tap = false })
 plugin:setActionMode('highlights', 'double_tap')
+ui:dispatch(S.gesture('touch', 300, 500))
 plugin:setEnabled(false)
 assert(ui.disable_double_tap == false and S.Device.input.disable_double_tap == false,
     'do not disable double tap when it was already enabled by the reader')
 plugin, ui = create('rolling', 'highlights')
 plugin:setActionMode('highlights', 'double_tap')
+ui:dispatch(S.gesture('touch', 300, 500))
 plugin:setEnabled(false)
 assert(ui.disable_double_tap == nil, 'restore an unset reader flag rather than forcing a value')
 
@@ -201,11 +242,15 @@ plugin:setActionMode('highlights', 'hold')
 activate(ui, 'double_tap', 350)
 assert(native_double == 2, 'a gesture not selected for this action stays native')
 local menu_taps = 0
-plugin, ui, calls = create('rolling', 'page_turns', { page_turns = 'hold' })
+plugin, ui, calls = create('rolling', 'plain', { links = 'double_tap', highlights = 'two_finger_tap' },
+    { disable_double_tap = true, allow_concurrent_taps = true })
 ui:registerTouchZones({ { id = 'readermenu_tap', ges = 'tap',
     screen_zone = { ratio_x = 0, ratio_y = 0, ratio_w = 1, ratio_h = 1 },
     overrides = { 'tap_forward', 'tap_backward' },
     handler = function() menu_taps = menu_taps + 1; return true end } })
+ui:dispatch(S.gesture('touch', 350, 500))
+assert(S.Device.input.disable_double_tap == true and S.Device.input.allow_concurrent_taps == true,
+    'reserved reader controls retain native gesture recognition')
 ui:dispatch(S.gesture('tap', 350, 500))
 assert(menu_taps == 1 and #ui.scrolls == 0, 'reader controls retain native single taps')
 activate(ui, 'hold', 350)
@@ -215,7 +260,11 @@ assert(calls.forward == 0 and calls.hold == 1, 'reserved reader controls must no
 local menu = {}
 plugin:addToMainMenu(menu)
 local items = menu.tap_to_top.sub_item_table[2].sub_item_table
-for index, key in ipairs({ 'links', 'highlights', 'page_turns' }) do
+assert(#items == 2, 'only conflicting link and highlight actions belong in this menu')
+for index, key in ipairs({ 'links', 'highlights' }) do
+    assert(items[index].text_func():find(index == 1 and 'Links' or 'Saved highlights', 1, true),
+        'rendering each action row must use gettext and its own title')
+    assert(#items[index].sub_item_table == 4, 'actions must always have a usable input')
     items[index].sub_item_table[3].callback()
     assert(plugin.action_modes[key] == 'double_tap')
     assert(items[index].sub_item_table[3].checked_func())
