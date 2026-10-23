@@ -12,6 +12,13 @@ time.s, time.huge = function(value) return value end, math.huge
 S.Device.screen.scaleByDPI = function(_, value) return value end
 local Detector = dofile(frontend .. '/device/gesturedetector.lua')
 S.reset()
+local desktop = arg[2] == 'desktop'
+if desktop then
+    S.Device.isDesktop = function() return true end
+    S.Device.isSDL = function() return true end
+    S.Device.hasMultitouch = function() return false end
+    S.Device.screen.getTouchRotation = function() return 0 end
+end
 local ui = S.newUI('rolling')
 ui.disable_double_tap, ui.allow_concurrent_taps = true, true
 S.top_widget = ui
@@ -46,7 +53,11 @@ local detector = Detector:new{
     input = input, screen = S.Device.screen, clock_id = 1,
     active_contacts = {}, contact_count = 0, previous_tap = {},
 }
+input.gesture_detector = detector
+local original_feed_event = detector.feedEvent
+plugin:registerDesktopMouseInput()
 local function dispatch(ges)
+    if ges and desktop then ges = detector:adjustGesCoordinate(ges) end
     if ges then emitted[#emitted + 1] = ges.ges; ui:dispatch(ges) end
 end
 local function feed(slot, id, at, x)
@@ -118,6 +129,99 @@ end
 local enabled_sequence = outside_pair(6, 203)
 plugin:setEnabled(false)
 assert(enabled_sequence == outside_pair(7, 205), 'outside two-finger input must retain its native recognition')
+
+if desktop then
+    plugin:setEnabled(true)
+    plugin:setActionMode('highlights', 'two_finger_tap')
+    plugin:setActionMode('links', 'double_tap')
+    local before = #ui.scrolls
+    -- These are the exact slot/tracking ID values produced by SDL for right-click.
+    feed(1, 1, 8)
+    feed(1, -1, 8.05)
+    assert(emitted[#emitted] == 'two_finger_tap' and activated == 4 and #ui.scrolls == before,
+        'right-click must immediately activate the two-finger action once without scrolling')
+    assert(not next(detector.active_contacts), 'right-click must not leave a delayed tap pending')
+
+    local links = 0
+    ui.link = {
+        getLinkFromGes = function(_, ges) if ges.pos.x == 340 then return {} end end,
+        onTap = function(_, _, ges)
+            assert(ges.ges == 'tap')
+            links = links + 1
+            return true
+        end,
+    }
+    plugin:setActionMode('links', 'two_finger_tap')
+    feed(1, 1, 9, 340)
+    feed(1, -1, 9.05, 340)
+    assert(links == 1 and activated == 4 and #ui.scrolls == before)
+
+    -- Left click still activates tap-to-top; right click outside stays native.
+    feed(0, 0, 10)
+    feed(0, -1, 10.05)
+    assert(emitted[#emitted] == 'tap' and #ui.scrolls == before + 1)
+    local native_before = native_taps
+    feed(1, 1, 11, 550)
+    feed(1, -1, 11.05, 550)
+    assert(emitted[#emitted] == 'tap' and native_taps == native_before + 1 and activated == 4)
+
+    -- A real two-contact gesture, even with tracking ID 1, is still native multitouch.
+    feed(0, 301, 12, 280)
+    feed(1, 1, 12.02, 320)
+    feed(0, -1, 12.10, 280)
+    feed(1, -1, 12.12, 320)
+    assert(emitted[#emitted] == 'two_finger_tap' and activated == 5)
+
+    -- Hit testing and dispatch must agree when the desktop view is rotated.
+    S.Device.screen.DEVICE_ROTATED_UPSIDE_DOWN = 2
+    S.Device.screen.getTouchRotation = function() return 2 end
+    plugin:setActionMode('highlights', 'hold')
+    feed(1, 1, 12.3, 260)
+    feed(1, -1, 12.35, 260)
+    assert(links == 2 and activated == 5 and #ui.scrolls == before + 1,
+        'right-click target must use the displayed coordinates in a rotated view')
+    S.Device.screen.getTouchRotation = function() return 0 end
+    plugin:setActionMode('highlights', 'two_finger_tap')
+
+    local reader_controls = 0
+    ui:registerTouchZones({ { id = 'readermenu_tap', ges = 'tap',
+        screen_zone = { ratio_x = .45, ratio_y = 0, ratio_w = .1, ratio_h = 1 },
+        overrides = { 'tap_forward' },
+        handler = function() reader_controls = reader_controls + 1; return true end } })
+    feed(1, 1, 12.6)
+    feed(1, -1, 12.65)
+    assert(emitted[#emitted] == 'tap' and reader_controls == 1 and activated == 5,
+        'reserved reader controls must keep their native right-click behavior')
+
+    local menu = {}
+    plugin:addToMainMenu(menu)
+    for _, row in ipairs(menu.tap_to_top.sub_item_table[2].sub_item_table) do
+        local option = row.sub_item_table[4]
+        assert(option.enabled_func() and option.text:find('right-click', 1, true),
+            'desktop users must be able to choose the right-click option without multitouch hardware')
+    end
+
+    -- Popup gestures are left to the popup, even over the underlying highlight.
+    S.top_widget = { name = 'popup' }
+    local popup_event = { slot = 1, id = 1, timev = 13, x = 340, y = 500 }
+    detector:feedEvent({ popup_event })
+    popup_event.id, popup_event.timev = -1, 13.05
+    local popup_gestures = detector:feedEvent({ popup_event })
+    assert(#popup_gestures == 1 and popup_gestures[1].ges == 'tap')
+    S.top_widget = ui
+    plugin:setEnabled(false)
+    feed(1, 1, 14)
+    feed(1, -1, 14.05)
+    assert(emitted[#emitted] == 'tap' and activated == 5, 'disabled plugin must leave mouse input native')
+    plugin:setEnabled(true)
+    ui.view.view_mode = 'page'
+    feed(1, 1, 15, 340)
+    feed(1, -1, 15.05, 340)
+    assert(emitted[#emitted] == 'tap' and links == 2, 'paged mode must keep native mouse input')
+    ui.view.view_mode = 'scroll'
+end
 plugin:onCloseDocument()
+assert(detector.feedEvent == original_feed_event, 'desktop input wrapper must be removed on document close')
 assert(ui.disable_double_tap == true and ui.allow_concurrent_taps == true)
-print('Native gesture detection tests passed (inside actions and unchanged outside timing/multitouch)')
+print('Native gesture detection tests passed (inside actions and unchanged outside timing/multitouch'
+    .. (desktop and ', desktop right-click' or '') .. ')')

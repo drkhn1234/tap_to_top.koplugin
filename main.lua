@@ -15,6 +15,7 @@ if not Device:isTouchDevice() then
 end
 
 local Screen = Device.screen
+local IS_DESKTOP_SDL = Device.isDesktop and Device:isDesktop() and Device.isSDL and Device:isSDL()
 local SETTINGS_PATH = ffiUtil.joinPath(DataStorage:getSettingsDir(), "tap_to_top.lua")
 local LEGACY_SETTINGS_PATH = ffiUtil.joinPath(DataStorage:getSettingsDir(), "velocity_scroll.lua")
 local DEFAULT_TAP_TO_TOP_ENABLED = true
@@ -34,7 +35,8 @@ local ACTION_MODES = {
     { key = "tap", title = _("Keep original single tap") },
     { key = "hold", title = _("Long press") },
     { key = "double_tap", title = _("Double tap") },
-    { key = "two_finger_tap", title = _("Two-finger tap") },
+    { key = "two_finger_tap", title = IS_DESKTOP_SDL
+        and _("Two-finger tap (right-click)") or _("Two-finger tap") },
 }
 local ACTION_MODE_TITLES = {}
 for _, mode in ipairs(ACTION_MODES) do
@@ -146,6 +148,7 @@ function TapToTop:init()
     self.ui:registerPostReaderReadyCallback(function()
         self:registerTouchZones()
         self:updateGestureDetection()
+        self:registerDesktopMouseInput()
     end)
 end
 
@@ -195,8 +198,60 @@ end
 
 function TapToTop:onCloseDocument()
     self:updateGestureDetection()
+    self.desktop_mouse_active = false
+    if self.desktop_detector and self.desktop_detector.feedEvent == self.desktop_feed_event then
+        self.desktop_detector.feedEvent = self.desktop_original_feed_event
+    end
     self.tap_hold_tracking = nil
     self.tap_to_top_suppressed = false
+end
+
+function TapToTop:isDesktopTwoFingerTarget(detector, pos)
+    if not self.desktop_mouse_active or not self.enabled or not self:isContinuousMode()
+            or UIManager:getTopmostVisibleWidget() ~= self.ui then
+        return false
+    end
+    local tap = detector:adjustGesCoordinate({
+        ges = "tap", pos = { x = pos.x, y = pos.y },
+    })
+    if not self:isInTapToTopRegion(tap) or self:shouldPreserveTapZone(tap) then return false end
+    local action = self:getNativeTapAction(tap)
+    return action and self.action_modes[action] == "two_finger_tap" or false
+end
+
+function TapToTop:registerDesktopMouseInput()
+    local input = Device.input
+    local detector = input and input.gesture_detector
+    if not IS_DESKTOP_SDL or not detector or self.desktop_detector then return end
+    self.desktop_mouse_active = true
+    self.desktop_detector = detector
+    self.desktop_original_feed_event = detector.feedEvent
+    self.desktop_feed_event = function(this, events)
+        -- SDL translates the right mouse button to slot 1, tracking ID 1.
+        -- A standalone contact is a click; paired contacts keep native multitouch.
+        local event = #events == 1 and events[1]
+        local contact = event and this:getContact(event.slot)
+        local right_click = event and event.slot == 1
+            and (contact and contact.tap_to_top_right_click
+                or not contact and event.id == 1 and not this:getContact(0))
+        local mapped = right_click and self:isDesktopTwoFingerTarget(this, event)
+        local disable_double_tap = input.disable_double_tap
+        -- A right-click is already a complete secondary click: emit it on release.
+        if mapped then input.disable_double_tap = true end
+        local gestures = self.desktop_original_feed_event(this, events)
+        if mapped then input.disable_double_tap = disable_double_tap end
+        if right_click then
+            contact = this:getContact(1)
+            if contact then contact.tap_to_top_right_click = true end
+            if mapped then
+                for _, ges in ipairs(gestures) do
+                    if ges.ges == "tap" then ges.ges = "two_finger_tap" end
+                end
+            end
+        end
+        return gestures
+    end
+    detector.feedEvent = self.desktop_feed_event
 end
 
 function TapToTop:updateGestureDetection(ges)
@@ -790,7 +845,7 @@ function TapToTop:addToMainMenu(menu_items)
                 radio = true,
                 checked_func = function() return self.action_modes[action_key] == mode_key end,
                 enabled_func = function()
-                    return mode_key ~= "two_finger_tap" or Device:hasMultitouch()
+                    return mode_key ~= "two_finger_tap" or IS_DESKTOP_SDL or Device:hasMultitouch()
                 end,
                 callback = function(touchmenu_instance)
                     self:setActionMode(action_key, mode_key)
