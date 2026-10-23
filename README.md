@@ -41,11 +41,11 @@ KOReader's *continuous* View Mode.
   unassigned corners remain part of the configured region.
 > [!TIP]
 > If you find yourself accidentally activating Top or Bottom menus while using tap-to-top frequently on screen positions that happen to collide with KOReader Menu tap zones, a solution is to adjust Menu zone values at:\
-> `Top Panel > Tools > More tools > Advance settings`, these keys:
+> (outside reader view) `Top Panel > Tools > More tools > Advance settings`, these keys:
 > 
 >  <img width="348" height="276" alt="image" src="https://github.com/user-attachments/assets/2f9faad7-c30d-4fe6-bda5-0cff823a2826"/> <br> 
->  **_MENU** is for *TOP MENU*,&ensp;**_CONFIG** is for *BOTTOM MENU*.&ensp;**_EXT** suffix is for extra/secondary zones of TOP and BOTTOM menus, it is recommended to disable extra/secondary zones by setting its values to 0 for a better plugin experience.
-- As both the plugin and open highlighted text menu action use single-tap in screen to activate their functions, a compromise is made which sets double tap to activate highlighted text menu while inside the plugin's active region (screen area left after excluding the aforementioned margins). More about in **Conflicting tap actions** below.
+>  **_MENU** is for *TOP MENU*,&ensp;**_CONFIG** is for *BOTTOM MENU*.&ensp;**_EXT** suffix is for extra/secondary zones of TOP and BOTTOM menus, it is recommended to disable extra/secondary zone(s) by setting its values to 0 for a better plugin experience.
+- As both the plugin and open highlighted text menu action use single-tap to activate their functions, a compromise is made which sets double tap to activate highlighted text menu while inside the plugin's active region (screen area left after excluding the aforementioned margins). More about in **Conflicting tap actions** below.
 - Both non-reflowable (PDF, DJVU, etc.) and reflowable (EPUB, MOBI, etc.) are supported.
 
 ## Conflicting tap actions
