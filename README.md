@@ -3,6 +3,9 @@
 `tap_to_top.koplugin` moves a tapped text line to the top of the screen in
 KOReader's *continuous* View Mode.
 
+<img width="462" height="225" alt="image" src="https://github.com/user-attachments/assets/2634f6f3-c908-4ab6-ace0-5628d6db947c" />
+
+
 ## See it in action
 
 <p align="center">
