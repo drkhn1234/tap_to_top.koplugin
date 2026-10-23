@@ -10,7 +10,7 @@ KOReader's *continuous* View Mode.
 ## See it in action
 
 <p align="center">
-  <img src="docs/demos/tap-to-top-text.gif" width="480" alt="Two taps in KOReader bring the selected text lines to the top of the screen.">
+  <img src="docs/demos/tap-to-top-text.gif" width="480" alt="Tap text lines to the top, then tap a heading near the bottom of the screen to bring its entire paragraph into view.">
 </p>
 
 <table>
@@ -19,7 +19,7 @@ KOReader's *continuous* View Mode.
     <th>Conflicting tap actions</th>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/demos/tap-to-top-images-pdf.gif" width="360" alt="Tap an image detail, then a line on the next visible PDF page, to move each position to the top."></td>
+    <td width="50%"><img src="docs/demos/tap-to-top-images-pdf.gif" width="360" alt="Tap halfway through an image to show only its lower figure with the explanation, then tap the whitespace above a table to show the table and all its notes together."></td>
     <td width="50%"><img src="docs/demos/tap-to-top-conflicting-actions.gif" width="360" alt="Double tap is selected by default for saved highlights; two quick taps open the highlight menu."></td>
   </tr>
   <tr>
