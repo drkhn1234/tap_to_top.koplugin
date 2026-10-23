@@ -58,6 +58,8 @@ off, so the same gesture can turn it back on.
   interrupting a velocity gesture stops scrolling without moving the tapped line.
 - Both paged documents in continuous mode and reflowable documents in scroll mode
   are supported. Mouse-wheel input keeps its normal behavior.
+- When multiple PDF pages are visible, tapping a later page aligns the tapped
+  line to the top, accounting for page gaps and the remaining part of each page.
 
 ## Upgrading from the combined velocity scroll plugin
 
@@ -78,6 +80,13 @@ Run from the repository directory with LuaJIT:
 
 ```sh
 luajit tests/test_tap_to_top.lua
+```
+
+To check PDF page-boundary behavior against KOReader's actual paging, view, and
+geometry code, also run with a KOReader source checkout:
+
+```sh
+luajit tests/test_pdf_scrolling.lua /path/to/koreader/frontend
 ```
 
 This plugin was extracted from

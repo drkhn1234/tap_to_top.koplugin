@@ -341,6 +341,31 @@ function TapToTop:getTappedLineY(ges)
     return (screen_box and screen_box.y) or tap_y
 end
 
+function TapToTop:scrollPagedLineToTop(distance)
+    local paging = self.ui.paging
+    local page_states = self.view.page_states
+    if not page_states or #page_states < 2 then
+        return paging:onPanningRel(distance)
+    end
+
+    local page_gap = self.view.page_gap and self.view.page_gap.height or 0
+    -- KOReader discards the overshoot when a relative pan leaves a PDF page.
+    -- Cross each visible page separately, then scroll within the target page.
+    -- Keep the original states: onPanningRel replaces the viewport's states.
+    for index, state in ipairs(page_states) do
+        local height = state.visible_area.h
+        if distance < height or index == #page_states then
+            return paging:onPanningRel(distance)
+        end
+        paging:onPanningRel(height)
+        -- The gap above the next page disappears when that page becomes first.
+        distance = distance - height - page_gap
+        if distance <= 0 then
+            return
+        end
+    end
+end
+
 function TapToTop:scrollLineToTop(line_y)
     local distance = math.max(0, math.floor((line_y or 0) + 0.5))
     if distance == 0 then
@@ -353,7 +378,7 @@ function TapToTop:scrollLineToTop(line_y)
     self:clearNativePanState()
 
     if self.ui.paging and self.view.page_scroll then
-        self.ui.paging:onPanningRel(distance)
+        self:scrollPagedLineToTop(distance)
     elseif self.ui.rolling and self.view.view_mode == "scroll" then
         local rolling = self.ui.rolling
         local was_ui_scrolling = UIManager.currently_scrolling
