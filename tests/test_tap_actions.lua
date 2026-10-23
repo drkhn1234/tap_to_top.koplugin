@@ -261,7 +261,7 @@ local menu = {}
 plugin:addToMainMenu(menu)
 local root_items = menu.tap_to_top.sub_item_table
 local conflicting_actions = root_items[2]
-assert(conflicting_actions.text == 'Conflicting tap action' and conflicting_actions.help_text,
+assert(conflicting_actions.text == 'Conflicting tap actions' and conflicting_actions.help_text,
     'the renamed submenu must explain the conflicting actions when held')
 assert(#root_items[3].sub_item_table == 4, 'the region submenu must contain only screen margins')
 assert(root_items[4].enabled == false and root_items[4].text:find(plugin.version, 1, true),
