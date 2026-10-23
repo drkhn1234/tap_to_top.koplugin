@@ -61,10 +61,9 @@ active region:
 
 - **Keep original single tap** leaves that action on single tap instead of
   scrolling the tapped link's line to the top.
-- **Long press**, **Double tap**, or **Two-finger tap** replaces single tap with
-  tap-to-top and moves the original action to the selected gesture.
+- **Long press**, **Double tap**, or **Two-finger tap** moves the original action to the selected gesture.
 
-Outside the tap-to-top region, all reader actions use KOReader's normal behavior. Reader menus, the status
+Outside the tap-to-top active region, all reader actions use KOReader's normal behavior. Reader menus, the status
 bar, and assigned corner tap zones keep their normal behavior.
 
 On PC, **Two-finger tap (right-click)** also accepts the touchpad's two-finger
@@ -75,16 +74,13 @@ selection when the drag distance reaches **Long-press movement
 threshold** hence you can select text even when long press is bound to open link or highlight menu action.
 The threshold defaults to **32 px**. Its button is always visible in
 **Conflicting tap actions**: faded when no action uses long press, and active
-and editable when at least one does. Hold the button for an explanation.
+and editable when at least one does.
 
 To look up a single word inside a saved highlight while its menu uses
 **Long press**, hold the word, move past the threshold while staying within
 that word, and release. The dictionary opens for that word. Dragging across
 words selects a passage instead. A stationary long press opens the highlight
 menu.
-
-New installs use **Double tap** for saved highlights. Existing saved choices
-are retained when upgrading.
 
 ## Tests
 
