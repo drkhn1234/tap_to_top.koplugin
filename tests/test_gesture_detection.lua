@@ -17,12 +17,12 @@ S.registerTouchZones = InputContainer.registerTouchZones
 S.Device.screen.scaleByDPI = function(_, value) return value end
 local Detector = dofile(frontend .. '/device/gesturedetector.lua')
 S.reset()
+S.Device.screen.getTouchRotation = function() return 0 end
 local desktop = arg[2] == 'desktop'
 if desktop then
     S.Device.isDesktop = function() return true end
     S.Device.isSDL = function() return true end
     S.Device.hasMultitouch = function() return false end
-    S.Device.screen.getTouchRotation = function() return 0 end
 end
 local ui = S.newUI('rolling')
 ui.disable_double_tap, ui.allow_concurrent_taps = true, true
@@ -60,7 +60,7 @@ local detector = Detector:new{
 }
 input.gesture_detector = detector
 local original_feed_event = detector.feedEvent
-plugin:registerDesktopMouseInput()
+plugin:registerGestureInput()
 -- The global screenshot listener sees gestures before the reader's touch zones.
 -- Use its real rate/span filters so converted mouse gestures satisfy the whole
 -- two-finger payload contract, even when the reader later consumes the gesture.
@@ -244,6 +244,83 @@ if desktop then
     assert(emitted[#emitted] == 'tap' and links == 2, 'paged mode must keep native mouse input')
     ui.view.view_mode = 'scroll'
 end
+
+-- Only the action under this contact may introduce a double-tap wait.
+plugin:setEnabled(true)
+ui.view.view_mode = 'scroll'
+local target_link_calls = 0
+ui.link = {
+    getLinkFromGes = function(_, ges)
+        if ges.pos.x >= 345 and ges.pos.x <= 375 then return {} end
+    end,
+    onTap = function(_, _, ges)
+        if ges.pos.x >= 345 and ges.pos.x <= 375 then
+            target_link_calls = target_link_calls + 1
+            return true
+        end
+    end,
+}
+local original_highlight_tap = ui.highlight.onTap
+ui:registerTouchZones({ { id = 'readerhighlight_tap', ges = 'tap',
+    screen_zone = { ratio_x = 0, ratio_y = 0, ratio_w = 1, ratio_h = 1 },
+    overrides = { 'tap_forward' },
+    handler = function(ges)
+        if plugin:hasSavedHighlightAtGesture(ges) then return original_highlight_tap(ui.highlight, nil, ges) end
+    end } })
+local next_id = 1000
+local function single(x, at)
+    next_id = next_id + 1
+    feed(0, next_id, at, x)
+    feed(0, -1, at + .05, x)
+end
+local function immediate(x, at, native_highlight)
+    local scrolls, highlights = #ui.scrolls, activated
+    single(x, at)
+    assert(not (timers[0] and timers[0].double_tap), 'unrelated taps must not schedule the double-tap wait')
+    assert(#ui.scrolls == scrolls + (native_highlight and 0 or 1)
+        and activated == highlights + (native_highlight and 1 or 0),
+        'the correct single-tap action must run immediately on release')
+end
+plugin:setActionMode('highlights', 'double_tap')
+plugin:setActionMode('links', 'hold')
+immediate(450, 20) -- ordinary text, while highlights use double tap
+immediate(350, 21) -- link using long press takes priority over overlapping highlight
+local scrolls = #ui.scrolls
+single(240, 22)
+assert(#ui.scrolls == scrolls and timers[0].double_tap, 'the relevant highlight must still wait')
+fire(0, 'double_tap')
+assert(#ui.scrolls == scrolls + 1)
+
+plugin:setActionMode('links', 'double_tap')
+plugin:setActionMode('highlights', 'tap')
+immediate(450, 23) -- ordinary text, while links use double tap
+immediate(240, 24, true) -- highlight kept on single tap
+scrolls = #ui.scrolls
+single(350, 25)
+assert(#ui.scrolls == scrolls and timers[0].double_tap, 'the relevant link must still wait')
+single(350, 25.15)
+assert(target_link_calls == 1 and #ui.scrolls == scrolls, 'double-tap link action must fire once')
+
+-- Inside ordinary text stays immediate even when native double taps were enabled.
+ui.disable_double_tap, input.disable_double_tap = false, false
+immediate(450, 26)
+assert(input.disable_double_tap == false and ui.disable_double_tap == false,
+    'contact-specific timing must restore the reader preference')
+single(550, 27)
+assert(timers[0].double_tap, 'outside taps must retain the original reader double-tap behavior')
+fire(0, 'double_tap')
+ui.disable_double_tap, input.disable_double_tap = true, true
+
+-- KOReader omits the second touch event while a double-tap timer is pending.
+-- Moving to plain text within that interval must nevertheless act immediately.
+plugin:setActionMode('links', 'hold')
+plugin:setActionMode('highlights', 'double_tap')
+scrolls = #ui.scrolls
+single(395, 28)
+assert(timers[0].double_tap)
+single(415, 28.15)
+assert(#ui.scrolls == scrolls + 1 and not timers[0].double_tap,
+    'a pending highlight double tap must not delay a later ordinary tap')
 plugin:onCloseDocument()
 assert(screenshots == 0, 'normal taps and right-click aliases must not trigger the screenshot shortcut')
 assert(detector.feedEvent == original_feed_event, 'desktop input wrapper must be removed on document close')

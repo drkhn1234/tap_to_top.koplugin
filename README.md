@@ -57,12 +57,12 @@ selection; release-only movement uses the existing **Long-press movement
 threshold**, which defaults to `40 px`. Unclaimed long presses retain normal
 selection and dictionary behavior.
 
-Double tap detection applies to touches starting inside the region while the
-plugin is active in scroll mode. Single taps there wait for KOReader's usual
-double-tap interval; taps outside the region keep their normal timing. Choosing
-two-finger tap enables combined two-finger recognition inside the region; that
-choice is available on multitouch devices and PC. The reader's gesture
-preferences stay unchanged.
+Only taps on a link or saved highlight assigned to **Double tap** wait for
+KOReader's double-tap interval. Ordinary text, images, whitespace, and actions
+using another input respond immediately. Taps outside the region keep their
+normal timing. Choosing two-finger tap enables combined two-finger recognition
+inside the region; that choice is available on multitouch devices and PC. The
+reader's gesture preferences stay unchanged.
 
 ## Tests
 
