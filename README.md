@@ -63,6 +63,11 @@ active region:
   scrolling the tapped link's line to the top.
 - **Long press**, **Double tap**, or **Two-finger tap** moves the original action to the selected gesture.
 
+<p align="center">
+  **Tap-to-top region action binds**\
+  *Highlight Menu Activate*: Double Tap&emsp; *Open Link*: Single-tap
+</p>
+
 Outside the tap-to-top active region, all reader actions use KOReader's normal behavior. Reader menus, the status
 bar, and assigned corner tap zones keep their normal behavior.
 
@@ -99,6 +104,3 @@ luajit tests/test_tap_actions.lua /path/to/koreader/frontend
 luajit tests/test_gesture_detection.lua /path/to/koreader/frontend
 luajit tests/test_gesture_detection.lua /path/to/koreader/frontend desktop
 ```
-
-This plugin was extracted from
-[velocity_scroll.koplugin](https://github.com/drkhn1234/velocity_scroll.koplugin).
