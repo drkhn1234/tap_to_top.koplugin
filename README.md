@@ -1,7 +1,7 @@
 # Tap to top
 
 `tap_to_top.koplugin` moves a tapped text line to the top of the screen in
-KOReader's continuous View Mode mode.
+KOReader's *continuous* View Mode.
 
 
 ## Behavior and settings
@@ -48,6 +48,10 @@ midpoint between the fingers. Outside the configured region, all reader actions,
 including page turns, use KOReader's normal behavior. Reader menus, the status
 bar, and assigned corner tap zones keep their normal behavior.
 
+On PC, **Two-finger tap (right-click)** also accepts the touchpad's two-finger
+tap or a mouse right-click on the link or saved highlight. This choice is
+available on desktop even without a touchscreen.
+
 Long presses assigned to an action run on release. Dragging starts native text
 selection; release-only movement uses the existing **Long-press movement
 threshold**, which defaults to `40 px`. Unclaimed long presses retain normal
@@ -57,8 +61,8 @@ Double tap detection applies to touches starting inside the region while the
 plugin is active in scroll mode. Single taps there wait for KOReader's usual
 double-tap interval; taps outside the region keep their normal timing. Choosing
 two-finger tap enables combined two-finger recognition inside the region; that
-choice is available on multitouch devices. The reader's gesture preferences stay
-unchanged.
+choice is available on multitouch devices and PC. The reader's gesture
+preferences stay unchanged.
 
 ## Tests
 
@@ -75,6 +79,7 @@ the `frontend` directory of a KOReader source checkout:
 ```sh
 luajit tests/test_tap_actions.lua /path/to/koreader/frontend
 luajit tests/test_gesture_detection.lua /path/to/koreader/frontend
+luajit tests/test_gesture_detection.lua /path/to/koreader/frontend desktop
 ```
 
 This plugin was extracted from
