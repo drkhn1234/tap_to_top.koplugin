@@ -29,8 +29,29 @@ plugin = create('rolling', { enabled = false, tap_region_left_margin = 7 }, {
 assert(not plugin.enabled and plugin.tap_region_left_margin == 7, 'existing new settings take priority')
 plugin = create('rolling', {}, { tap_to_top_enabled = false })
 assert(not plugin.enabled, 'false must not be mistaken for a missing setting')
-plugin = create('rolling', {}, {})
-assert(not plugin.enabled, 'fresh install defaults to disabled')
+plugin, ui = create('rolling', {}, {})
+assert(plugin.enabled, 'fresh install defaults to enabled')
+assert(ui:dispatch(S.gesture('tap')) and #ui.scrolls == 1, 'fresh install works without enabling it manually')
+
+local toggle_action = assert(S.actions.toggle_tap_to_top, 'gesture toggle must be registered during init')
+assert(toggle_action.category == 'none' and toggle_action.reader, 'toggle belongs in Reader actions')
+local toggle = assert(plugin['on' .. toggle_action.event], 'registered event must have a handler')
+plugin.tap_hold_tracking = { mode = 'tap' }
+plugin.tap_to_top_suppressed = true
+assert(toggle(plugin) and not plugin.enabled)
+assert(not plugin.tap_hold_tracking and not plugin.tap_to_top_suppressed, 'toggle clears stale gesture state')
+assert(S.settings['/settings/tap_to_top.lua'].enabled == false, 'gesture toggle persists the disabled state')
+assert(not ui:dispatch(S.gesture('tap')) and #ui.scrolls == 1, 'disabled state yields document taps')
+local toggle_menu = {}
+plugin:addToMainMenu(toggle_menu)
+assert(not toggle_menu.tap_to_top.sub_item_table[1].checked_func(), 'menu reflects gesture toggle')
+local disabled_reopened = S.load('main.lua', S.newUI('rolling'))
+assert(not disabled_reopened.enabled, 'saved gesture toggle survives reopening')
+assert(toggle(plugin) and plugin.enabled, 'registered action also works while disabled')
+assert(S.settings['/settings/tap_to_top.lua'].enabled == true)
+assert(toggle_menu.tap_to_top.sub_item_table[1].checked_func())
+ui:dispatch(S.gesture('touch'))
+assert(ui:dispatch(S.gesture('tap')) and #ui.scrolls == 2)
 
 plugin, ui = create()
 local menus = {}

@@ -7,7 +7,13 @@ and both plugins can be used together.
 
 ## Installation
 
-Copy this repository into `koreader/plugins/tap_to_top.koplugin`, or clone it:
+Download **tap_to_top.koplugin.zip** from the
+[latest release](https://github.com/drkhn1234/tap_to_top.koplugin/releases/latest).
+Create `koreader/plugins/tap_to_top.koplugin/` and extract the ZIP contents
+directly into it. The ZIP contains the plugin files at its root.
+
+Alternatively, copy this repository into `koreader/plugins/tap_to_top.koplugin`,
+or clone it:
 
 ```sh
 git clone https://github.com/drkhn1234/tap_to_top.koplugin.git /path/to/koreader/plugins/tap_to_top.koplugin
@@ -20,8 +26,16 @@ a document in continuous/scroll mode, then browse:
 Reader menu -> Scrolling -> Tap to top
 ```
 
-Enable **Tap a line to scroll it to top**. The feature is disabled by default;
-its menu is available only in continuous/scroll mode on touch devices.
+**Tap a line to scroll it to top** is enabled by default for new installs.
+Existing saved settings, including imported settings, are preserved. Its menu
+is available only in continuous/scroll mode on touch devices.
+
+## Gesture toggle
+
+In Gesture Manager, assign **Reader -> Toggle tap to top** to a reading gesture.
+This switches the same setting as the plugin menu, saves the new state, and
+shows an on/off notification. The action remains available while tap-to-top is
+off, so the same gesture can turn it back on.
 
 ## Behavior and settings
 

@@ -1,5 +1,5 @@
 -- Minimal KOReader fixtures for behavioral tests; neither plugin is required.
-local Support = { settings = {}, scheduled = {} }
+local Support = { settings = {}, scheduled = {}, actions = {} }
 local function noop() end
 local Object = {}
 function Object:extend(o)
@@ -28,6 +28,11 @@ local device = { screen = screen, isTouchDevice = function() return true end }
 Support.Device = device
 package.preload.datastorage = function() return { getSettingsDir = function() return '/settings' end } end
 package.preload.device = function() return device end
+package.preload.dispatcher = function()
+    return { registerAction = function(_, name, action)
+        if not Support.actions[name] then Support.actions[name] = action end
+    end }
+end
 package.preload.luasettings = function()
     return { open = function(_, path)
         if not Support.settings[path] then Support.settings[path] = {} end
@@ -64,7 +69,7 @@ package.preload['ui/time'] = function()
     return { to_s = function(value) return value end, ms = function(value) return value / 1000 end }
 end
 function Support.reset()
-    Support.settings, Support.scheduled = {}, {}
+    Support.settings, Support.scheduled, Support.actions = {}, {}, {}
     UIManager.currently_scrolling = false
 end
 function Support.tick(callback)

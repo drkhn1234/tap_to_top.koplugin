@@ -1,5 +1,6 @@
 local DataStorage = require("datastorage")
 local Device = require("device")
+local Dispatcher = require("dispatcher")
 local LuaSettings = require("luasettings")
 local Notification = require("ui/widget/notification")
 local SpinWidget = require("ui/widget/spinwidget")
@@ -16,7 +17,7 @@ end
 local Screen = Device.screen
 local SETTINGS_PATH = ffiUtil.joinPath(DataStorage:getSettingsDir(), "tap_to_top.lua")
 local LEGACY_SETTINGS_PATH = ffiUtil.joinPath(DataStorage:getSettingsDir(), "velocity_scroll.lua")
-local DEFAULT_TAP_TO_TOP_ENABLED = false
+local DEFAULT_TAP_TO_TOP_ENABLED = true
 local DEFAULT_TAP_REGION_MARGINS = {
     tap_region_left_margin = 20,
     tap_region_right_margin = 20,
@@ -106,10 +107,20 @@ function TapToTop:init()
     ))
     self:normalizeTapRegionMargins()
 
+    self:onDispatcherRegisterActions()
     self.ui.menu:registerToMainMenu(self)
     self.ui:registerPostReaderReadyCallback(function()
         self:registerTouchZones()
     end)
+end
+
+function TapToTop:onDispatcherRegisterActions()
+    Dispatcher:registerAction("toggle_tap_to_top", {
+        category = "none",
+        event = "ToggleTapToTop",
+        title = _("Toggle tap to top"),
+        reader = true,
+    })
 end
 
 function TapToTop:registerTouchZones()
@@ -545,6 +556,10 @@ function TapToTop:setEnabled(enabled, notify)
         ))
     end
     return true
+end
+
+function TapToTop:onToggleTapToTop()
+    return self:setEnabled(not self.enabled, true)
 end
 
 function TapToTop:setLongPressMovementThreshold(value)
