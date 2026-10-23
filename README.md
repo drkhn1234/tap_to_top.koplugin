@@ -22,12 +22,12 @@ KOReader's *continuous* View Mode.
 >  <img width="348" height="276" alt="image" src="https://github.com/user-attachments/assets/2f9faad7-c30d-4fe6-bda5-0cff823a2826"/> <br> 
 >  **_MENU** is for *TOP MENU*,&ensp;**_CONFIG** is for *BOTTOM MENU*.&ensp;**_EXT** suffix is for extra/secondary zones of TOP and BOTTOM menus, it is recommended to disable extra/secondary zones by setting its values to 0 for a better plugin experience.
 - Inside the tap-to-top region, opening Highlight menu is done by long press instead of a tap in order to not conflict with the plugin behaviour (outside the tap-to-tap region, it still uses tap to open). Links keep their original single-tap behavior
-  by default. Both can be configured independently under **Tap actions** in the plugin settings page.
+  by default. Both can be configured independently under **Conflicting tap action** in the plugin settings page.
 - Both non-reflowable (PDF, DJVU, etc.) and reflowable (EPUB, MOBI, etc.) are supported.
 
-## Tap actions
+## Conflicting tap action
 
-### `Top Panel > Settings > Taps and gestures > Scrolling > Tap to top > Tap actions`
+### `Top Panel > Settings > Taps and gestures > Scrolling > Tap to top > Conflicting tap action`
 
 Choose how to open **Links** and **Saved highlights** inside the tap-to-top
 region:
@@ -43,6 +43,9 @@ tap and cannot be rebound to another gesture. Page turns have no plugin setting:
 single taps in the region scroll to the tapped line, except where a link or
 highlight keeps its original single tap.
 
+Hold **Conflicting tap action** for an explanation. The main plugin settings
+also show the installed plugin version.
+
 The replacement action uses the gesture's location. Two-finger tap uses the
 midpoint between the fingers. Outside the configured region, all reader actions,
 including page turns, use KOReader's normal behavior. Reader menus, the status
@@ -55,7 +58,9 @@ available on desktop even without a touchscreen.
 Long presses assigned to an action run on release. Dragging starts native text
 selection; release-only movement uses the existing **Long-press movement
 threshold**, which defaults to `40 px`. Unclaimed long presses retain normal
-selection and dictionary behavior.
+selection and dictionary behavior. The threshold appears as a read-only gray row
+in **Conflicting tap action** only while at least one action uses long press.
+Hold that row for an explanation of the threshold.
 
 Only taps on a link or saved highlight assigned to **Double tap** wait for
 KOReader's double-tap interval. Ordinary text, images, whitespace, and actions
