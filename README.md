@@ -3,6 +3,10 @@
 `tap_to_top.koplugin` moves a tapped text line to the top of the screen in
 KOReader's *continuous* View Mode.
 
+<p align="center">
+  <img width="462" height="225" alt="image" src="https://github.com/user-attachments/assets/2634f6f3-c908-4ab6-ace0-5628d6db947c" />
+</p>
+
 ## See it in action
 
 <p align="center">
@@ -16,11 +20,17 @@ KOReader's *continuous* View Mode.
   </tr>
   <tr>
     <td width="50%"><img src="docs/demos/tap-to-top-images-pdf.gif" width="360" alt="Tap an image detail, then a line on the next visible PDF page, to move each position to the top."></td>
-    <td width="50%"><img src="docs/demos/tap-to-top-conflicting-actions.gif" width="360" alt="Choose two-finger tap for saved highlights, then right-click a highlight to open its menu."></td>
+    <td width="50%"><img src="docs/demos/tap-to-top-conflicting-actions.gif" width="360" alt="Double tap is selected by default for saved highlights; two quick taps open the highlight menu."></td>
+  </tr>
+  <tr>
+    <th colspan="2">Dictionary lookup inside highlights</th>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="docs/demos/tap-to-top-highlight-dictionary.gif" width="480" alt="With highlights bound to long press, hold a word, move past the 32 px threshold within that word, and release to open its dictionary entry."></td>
   </tr>
 </table>
 
-Captured in KOReader with Tap to top v1.3.6. Teal markers show where to tap.
+Captured in KOReader. Teal markers show where to tap, hold, and move.
 
 ## Behavior and settings
 
@@ -39,7 +49,7 @@ Captured in KOReader with Tap to top v1.3.6. Teal markers show where to tap.
 > 
 >  <img width="348" height="276" alt="image" src="https://github.com/user-attachments/assets/2f9faad7-c30d-4fe6-bda5-0cff823a2826"/> <br> 
 >  **_MENU** is for *TOP MENU*,&ensp;**_CONFIG** is for *BOTTOM MENU*.&ensp;**_EXT** suffix is for extra/secondary zones of TOP and BOTTOM menus, it is recommended to disable extra/secondary zones by setting its values to 0 for a better plugin experience.
-- Inside the tap-to-top region, opening Highlight menu is done by long press instead of a tap in order to not conflict with the plugin behaviour (outside the tap-to-tap region, it still uses tap to open). Links keep their original single-tap behavior
+- Inside the tap-to-top region, opening Highlight menu is done by double tap instead of a tap in order to not conflict with the plugin behaviour (outside the tap-to-tap region, it still uses tap to open). Links keep their original single-tap behavior
   by default. Both can be configured independently under **Conflicting tap actions** in the plugin settings page.
 - Both non-reflowable (PDF, DJVU, etc.) and reflowable (EPUB, MOBI, etc.) are supported.
 
@@ -47,45 +57,35 @@ Captured in KOReader with Tap to top v1.3.6. Teal markers show where to tap.
 
 ### `Top Panel > Settings > Taps and gestures > Scrolling > Tap to top > Conflicting tap actions`
 
-Choose how to open **Links** and **Saved highlights** inside the tap-to-top
+Choose how to open **Links** and **Highlight menu** inside the tap-to-top
 region:
 
 - **Keep original single tap** leaves that action on single tap instead of
-  scrolling the tapped line to the top.
+  scrolling the tapped link's line to the top.
 - **Long press**, **Double tap**, or **Two-finger tap** replaces single tap with
   tap-to-top and moves the original action to the selected gesture.
 
-Both actions always remain available. Links default to their original single tap;
-saved highlights default to long press. Tap-to-top itself always uses a single
-tap and cannot be rebound to another gesture. Page turns have no plugin setting:
-single taps in the region scroll to the tapped line, except where a link or
-highlight keeps its original single tap.
-
-Hold **Conflicting tap actions** for an explanation. The main plugin settings
-also show the installed plugin version.
-
-The replacement action uses the gesture's location. Two-finger tap uses the
-midpoint between the fingers. Outside the configured region, all reader actions,
-including page turns, use KOReader's normal behavior. Reader menus, the status
+Outside the tap-to-top region, all reader actions use KOReader's normal behavior. Reader menus, the status
 bar, and assigned corner tap zones keep their normal behavior.
 
 On PC, **Two-finger tap (right-click)** also accepts the touchpad's two-finger
-tap or a mouse right-click on the link or saved highlight. This choice is
-available on desktop even without a touchscreen.
+tap or a mouse right-click on the link or saved highlight.
 
-Long presses assigned to an action run on release. Dragging starts native text
-selection; release-only movement uses the existing **Long-press movement
-threshold**, which defaults to `40 px`. Unclaimed long presses retain normal
-selection and dictionary behavior. The threshold appears as a read-only gray row
-in **Conflicting tap actions** only while at least one action uses long press.
-Hold that row for an explanation of the threshold.
+Long presses assigned to an action run on release. Dragging starts text
+selection when the drag distance reaches **Long-press movement
+threshold** hence you can select text even when long press is bound to open link or highlight menu action.
+The threshold defaults to **32 px**. Its button is always visible in
+**Conflicting tap actions**: faded when no action uses long press, and active
+and editable when at least one does. Hold the button for an explanation.
 
-Only taps on a link or saved highlight assigned to **Double tap** wait for
-KOReader's double-tap interval. Ordinary text, images, whitespace, and actions
-using another input respond immediately. Taps outside the region keep their
-normal timing. Choosing two-finger tap enables combined two-finger recognition
-inside the region; that choice is available on multitouch devices and PC. The
-reader's gesture preferences stay unchanged.
+To look up a single word inside a saved highlight while its menu uses
+**Long press**, hold the word, move past the threshold while staying within
+that word, and release. The dictionary opens for that word. Dragging across
+words selects a passage instead. A stationary long press opens the highlight
+menu.
+
+New installs use **Double tap** for saved highlights. Existing saved choices
+are retained when upgrading.
 
 ## Tests
 

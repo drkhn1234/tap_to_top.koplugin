@@ -25,11 +25,11 @@ local DEFAULT_TAP_REGION_MARGINS = {
     tap_region_top_margin = 0,
     tap_region_bottom_margin = 10,
 }
-local DEFAULT_LONG_PRESS_MOVEMENT_THRESHOLD = 40
+local DEFAULT_LONG_PRESS_MOVEMENT_THRESHOLD = 32
 local MIN_TAP_REGION_SIZE_PERCENT = 5
 local TAP_ACTIONS = {
     { key = "links", title = _("Links"), default = "tap" },
-    { key = "highlights", title = _("Saved highlights"), default = "hold" },
+    { key = "highlights", title = _("Saved highlights"), default = "double_tap" },
 }
 local ACTION_MODES = {
     { key = "tap", title = _("Keep original single tap") },
@@ -68,7 +68,7 @@ local TAP_TO_TOP_CORNER_HOLD_ZONES = {
 
 local TapToTop = WidgetContainer:extend{
     name = "tap_to_top",
-    version = "1.3.6",
+    version = "1.4.0",
     is_doc_only = true,
     settings_data = nil,
     enabled = DEFAULT_TAP_TO_TOP_ENABLED,
@@ -750,12 +750,23 @@ function TapToTop:onTapToTopHoldPan(ges)
     end
 
     if tracking.mode == "tap" then
+        if self:getHoldMovementDistance(ges) < self.long_press_movement_threshold then
+            return true
+        end
         self:activateNativeLongPress(ges)
     end
 
-    if self.ui.highlight
-            and type(self.ui.highlight.onHoldPan) == "function" then
-        self.ui.highlight:onHoldPan(nil, ges)
+    local highlight = self.ui.highlight
+    if highlight and type(highlight.onHoldPan) == "function" then
+        local was_word_selection = highlight.is_word_selection
+        local previous_text = highlight.selected_text and highlight.selected_text.text
+        highlight:onHoldPan(nil, ges)
+        -- KOReader treats every hold-pan as a range selection, even when the
+        -- finger stays in the original word. Keep dictionary lookup available.
+        if was_word_selection and previous_text and previous_text ~= ""
+                and highlight.selected_text and highlight.selected_text.text == previous_text then
+            highlight.is_word_selection = true
+        end
     end
     return true
 end
@@ -862,26 +873,38 @@ end
 
 function TapToTop:addToMainMenu(menu_items)
     local action_items = {}
+    local function usesLongPress()
+        for action_index, action in ipairs(TAP_ACTIONS) do
+            if self.action_modes[action.key] == "hold" then return true end
+        end
+        return false
+    end
+    local threshold_help = _("For actions assigned to long press, move at least this far before release to select text instead of performing the original tap action. Stay within one word to look it up in the dictionary; drag across words to select a passage.")
     local long_press_threshold_item = {
         text_func = function()
             return T(_("Long-press movement threshold: %1 px"), self.long_press_movement_threshold)
         end,
-        enabled = false,
-        help_text = _("For actions assigned to long press, move this far before release to select text instead of performing the original tap action. A hold-drag selects immediately."),
+        enabled_func = usesLongPress,
+        help_text = threshold_help,
+        keep_menu_open = true,
+        callback = function(touchmenu_instance)
+            UIManager:show(SpinWidget:new{
+                title_text = _("Long-press movement threshold"),
+                info_text = threshold_help,
+                value = self.long_press_movement_threshold,
+                value_min = 1,
+                value_max = math.max(200, math.floor(Screen:getWidth() / 3)),
+                value_step = 1,
+                value_hold_step = 8,
+                unit = _("px"),
+                default_value = DEFAULT_LONG_PRESS_MOVEMENT_THRESHOLD,
+                callback = function(spin)
+                    self:setLongPressMovementThreshold(spin.value)
+                    if touchmenu_instance then touchmenu_instance:updateItems() end
+                end,
+            })
+        end,
     }
-    local function refreshActionItems()
-        local uses_long_press = false
-        for action_index, action in ipairs(TAP_ACTIONS) do
-            if self.action_modes[action.key] == "hold" then
-                uses_long_press = true
-                break
-            end
-        end
-        -- Keep the same table so returning from a gesture choice updates visibility, too.
-        action_items[#TAP_ACTIONS + 1] = uses_long_press and long_press_threshold_item or nil
-        action_items[#TAP_ACTIONS].separator = uses_long_press
-        return action_items
-    end
     for action_index, action in ipairs(TAP_ACTIONS) do
         local action_key = action.key
         local action_title = action.title
@@ -898,7 +921,6 @@ function TapToTop:addToMainMenu(menu_items)
                 end,
                 callback = function(touchmenu_instance)
                     self:setActionMode(action_key, mode_key)
-                    refreshActionItems()
                     if touchmenu_instance then touchmenu_instance:updateItems() end
                 end,
             }
@@ -910,7 +932,8 @@ function TapToTop:addToMainMenu(menu_items)
             sub_item_table = modes,
         }
     end
-    refreshActionItems()
+    action_items[#action_items].separator = true
+    action_items[#action_items + 1] = long_press_threshold_item
     local function tapRegionMarginItem(title, key, opposite_key)
         return {
             text_func = function()
@@ -959,7 +982,6 @@ function TapToTop:addToMainMenu(menu_items)
                 text = _("Conflicting tap actions"),
                 help_text = _("Inside the tap-to-top region, choose how to open links and saved highlights: keep their single tap, or move the original action to long press, double tap, or two-finger tap. Tap-to-top always uses a single tap. Outside the region, normal reader actions apply."),
                 sub_item_table = action_items,
-                sub_item_table_func = refreshActionItems,
             },
             {
                 text = _("Tap-to-top region"),

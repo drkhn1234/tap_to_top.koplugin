@@ -31,6 +31,8 @@ plugin = create('rolling', {}, { tap_to_top_enabled = false })
 assert(not plugin.enabled, 'false must not be mistaken for a missing setting')
 plugin, ui = create('rolling', {}, {})
 assert(plugin.enabled, 'fresh install defaults to enabled')
+assert(plugin.action_modes.highlights == 'double_tap' and plugin.long_press_movement_threshold == 32,
+    'fresh installs use double tap for highlights and a 32 px movement threshold')
 assert(ui:dispatch(S.gesture('tap')) and #ui.scrolls == 1, 'fresh install works without enabling it manually')
 
 local toggle_action = assert(S.actions.toggle_tap_to_top, 'gesture toggle must be registered during init')
@@ -115,8 +117,10 @@ assert(ui:dispatch(S.gesture('hold')))
 assert(ui:dispatch(S.gesture('hold_release')))
 assert(links == 1 and holds == 0, 'stationary link hold follows the link')
 ui:dispatch(S.gesture('hold'))
-ui:dispatch(S.gesture('hold_pan', 301, 500))
-ui:dispatch(S.gesture('hold_release', 301, 500))
+ui:dispatch(S.gesture('hold_pan', 331, 500))
+assert(holds == 0 and drags == 0, 'movement below the threshold must not select text')
+ui:dispatch(S.gesture('hold_pan', 332, 500))
+ui:dispatch(S.gesture('hold_release', 332, 500))
 assert(holds == 1 and drags == 1 and releases == 1 and links == 1, 'hold-drag forwards native selection')
 ui:dispatch(S.gesture('hold'))
 ui:dispatch(S.gesture('hold_release', 340, 500))
@@ -124,6 +128,7 @@ assert(holds == 2 and releases == 2 and links == 1, 'release movement threshold 
 ui.link = nil
 ui.view.highlight = { visible_boxes = { { index = 1, rect = { x = 290, y = 490, w = 20, h = 20 } } } }
 local highlights = 0
+plugin:setActionMode('highlights', 'hold')
 ui.highlight.onTap = function() highlights = highlights + 1; return true end
 ui:dispatch(S.gesture('hold'))
 ui:dispatch(S.gesture('hold_release'))

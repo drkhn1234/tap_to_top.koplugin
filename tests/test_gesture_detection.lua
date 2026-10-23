@@ -220,9 +220,11 @@ if desktop then
     local menu = {}
     plugin:addToMainMenu(menu)
     for _, row in ipairs(menu.tap_to_top.sub_item_table[2].sub_item_table) do
-        local option = row.sub_item_table[4]
-        assert(option.enabled_func() and option.text:find('right-click', 1, true),
-            'desktop users must be able to choose the right-click option without multitouch hardware')
+        if row.sub_item_table then
+            local option = row.sub_item_table[4]
+            assert(option.enabled_func() and option.text:find('right-click', 1, true),
+                'desktop users must be able to choose the right-click option without multitouch hardware')
+        end
     end
 
     -- Popup gestures are left to the popup, even over the underlying highlight.
