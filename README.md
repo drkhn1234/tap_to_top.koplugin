@@ -1,7 +1,7 @@
 # Tap to top
 
 `tap_to_top.koplugin` moves a tapped text line to the top of the screen in
-KOReader's continuous View Mode mode.
+KOReader's *continuous* View Mode.
 
 
 ## Behavior and settings
