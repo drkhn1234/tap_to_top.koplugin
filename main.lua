@@ -776,25 +776,29 @@ end
 
 function TapToTop:addToMainMenu(menu_items)
     local action_items = {}
-    for _, action in ipairs(TAP_ACTIONS) do
+    for action_index, action in ipairs(TAP_ACTIONS) do
+        local action_key = action.key
+        local action_title = action.title
         local modes = {}
-        for _, mode in ipairs(ACTION_MODES) do
+        for mode_index, mode in ipairs(ACTION_MODES) do
+            local mode_key = mode.key
+            local mode_title = mode.title
             modes[#modes + 1] = {
-                text = mode.title,
+                text = mode_title,
                 radio = true,
-                checked_func = function() return self.action_modes[action.key] == mode.key end,
+                checked_func = function() return self.action_modes[action_key] == mode_key end,
                 enabled_func = function()
-                    return mode.key ~= "two_finger_tap" or Device:hasMultitouch()
+                    return mode_key ~= "two_finger_tap" or Device:hasMultitouch()
                 end,
                 callback = function(touchmenu_instance)
-                    self:setActionMode(action.key, mode.key)
+                    self:setActionMode(action_key, mode_key)
                     if touchmenu_instance then touchmenu_instance:updateItems() end
                 end,
             }
         end
         action_items[#action_items + 1] = {
             text_func = function()
-                return T(_("%1: %2"), action.title, ACTION_MODE_TITLES[self.action_modes[action.key]])
+                return T(_("%1: %2"), action_title, ACTION_MODE_TITLES[self.action_modes[action_key]])
             end,
             sub_item_table = modes,
         }
