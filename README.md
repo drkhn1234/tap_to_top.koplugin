@@ -63,6 +63,12 @@ active region:
   scrolling the tapped link's line to the top.
 - **Long press**, **Double tap**, or **Two-finger tap** moves the original action to the selected gesture.
 
+**Links** respects KOReader's native **Tap to follow links** setting. When it
+is off, the Links row is faded and inactive, and link locations do not reserve
+an input or introduce a double-tap wait. Turning it back on restores the saved
+gesture choice. A disabled link binding also leaves the movement threshold
+inactive unless saved highlights use long press.
+
 <p align="center">
   **Tap-to-top region action binds**\
   *Highlight Menu Activate*: Double Tap&emsp; *Open Link*: Single-tap

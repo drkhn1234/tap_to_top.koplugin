@@ -1,4 +1,11 @@
 local S = dofile('tests/support.lua')
+local native_settings = {}
+G_reader_settings = {
+    readSetting = function(self, key, default)
+        if native_settings[key] ~= nil then return native_settings[key] end
+        return default
+    end,
+}
 if arg[1] then
     local frontend = arg[1]
     package.preload.depgraph = function() return dofile(frontend .. '/depgraph.lua') end
@@ -21,6 +28,7 @@ local function create(mode, target, modes, flags)
     S.reset()
     local ui = S.newUI(mode)
     flags = flags or {}
+    native_settings.tap_to_follow_links = flags.tap_to_follow_links
     ui.disable_double_tap = flags.disable_double_tap
     ui.allow_concurrent_taps = flags.allow_concurrent_taps
     S.top_widget = ui
@@ -33,6 +41,7 @@ local function create(mode, target, modes, flags)
         getLinkFromGes = function() if target == 'links' or target == 'overlap' then return {} end end,
         onTap = function(_, _, ges)
             assert(ges.ges == 'tap', 'native action must receive a tap gesture')
+            if native_settings.tap_to_follow_links == false then return end
             if target == 'links' or target == 'overlap' or target == 'nearby_link' then
                 calls.links = calls.links + 1
                 return true
@@ -111,6 +120,49 @@ for _, document_mode in ipairs({ 'rolling', 'paging' }) do
         end
     end
 end
+-- Disabled native link taps must not reserve the link's position or gestures.
+for _, document_mode in ipairs({ 'rolling', 'paging' }) do
+    for _, mode in ipairs({ 'tap', 'hold', 'double_tap', 'two_finger_tap' }) do
+        local plugin, ui, calls = create(document_mode, 'links', { links = mode },
+            { tap_to_follow_links = false, allow_concurrent_taps = true })
+        local menu = {}
+        plugin:addToMainMenu(menu)
+        local rows = menu.tap_to_top.sub_item_table[2].sub_item_table
+        assert(not rows[1].enabled_func() and rows[2].enabled_func(),
+            'native link taps off must gray only the Links row')
+        assert(not rows[3].enabled_func(), 'a disabled link binding must not activate the hold threshold')
+        for _, option in ipairs(rows[1].sub_item_table) do
+            assert(not option.enabled_func(), 'disabled link choices must also stay inactive')
+        end
+        ui:dispatch(S.gesture('touch', 350, 500))
+        assert(S.Device.input.disable_double_tap and S.Device.input.allow_concurrent_taps,
+            'disabled link bindings must not change double-tap or multitouch recognition')
+        assert(ui:dispatch(S.gesture('tap', 350, 500)) and #ui.scrolls == 1 and calls.links == 0,
+            'tapping a disabled native link must scroll to the tapped line')
+        for _, gesture in ipairs({ 'hold', 'double_tap', 'two_finger_tap' }) do activate(ui, gesture, 350) end
+        assert(calls.links == 0 and calls.hold == 1 and calls.release == 1 and #ui.scrolls == 1,
+            'disabled links must not consume alternate gestures or native text selection')
+        native_settings.tap_to_follow_links = true
+        assert(rows[1].enabled_func() and plugin.action_modes.links == mode,
+            'reenabling native links must restore the saved input choice without rebuilding the menu')
+        assert(rows[3].enabled_func() == (mode == 'hold'))
+        activate(ui, mode, 350)
+        assert(calls.links == 1, 'reenabled native links must work through their saved input')
+    end
+end
+
+local pending, pending_ui, pending_calls = create('rolling', 'links', { links = 'hold' })
+pending_ui:dispatch(S.gesture('hold', 350, 500))
+native_settings.tap_to_follow_links = false
+pending_ui:dispatch(S.gesture('hold_release', 350, 500))
+assert(pending_calls.links == 0, 'disabling native links must cancel an already pending link activation')
+local overlap, overlap_ui, overlap_calls = create('rolling', 'overlap',
+    { links = 'double_tap', highlights = 'double_tap' }, { tap_to_follow_links = false })
+assert(overlap:getNativeTapAction(S.gesture('tap', 350, 500)) == 'highlights')
+activate(overlap_ui, 'double_tap', 350)
+assert(overlap_calls.highlights == 1 and overlap_calls.links == 0,
+    'saved highlights over disabled links must retain their own conflicting action')
+
 local plugin, ui, calls = create('rolling', 'links')
 assert(plugin.action_modes.links == 'tap' and plugin.action_modes.highlights == 'double_tap')
 ui:dispatch(S.gesture('tap'))
