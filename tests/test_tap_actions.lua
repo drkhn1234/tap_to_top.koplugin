@@ -259,7 +259,14 @@ assert(calls.forward == 0 and calls.hold == 1, 'reserved reader controls must no
 -- Changing any menu choice must address its own action, even with Lua closures.
 local menu = {}
 plugin:addToMainMenu(menu)
-local items = menu.tap_to_top.sub_item_table[2].sub_item_table
+local root_items = menu.tap_to_top.sub_item_table
+local conflicting_actions = root_items[2]
+assert(conflicting_actions.text == 'Conflicting tap action' and conflicting_actions.help_text,
+    'the renamed submenu must explain the conflicting actions when held')
+assert(#root_items[3].sub_item_table == 4, 'the region submenu must contain only screen margins')
+assert(root_items[4].enabled == false and root_items[4].text:find(plugin.version, 1, true),
+    'the main plugin settings must show the installed version as information')
+local items = conflicting_actions.sub_item_table_func()
 assert(#items == 2, 'only conflicting link and highlight actions belong in this menu')
 for index, key in ipairs({ 'links', 'highlights' }) do
     assert(items[index].text_func():find(index == 1 and 'Links' or 'Saved highlights', 1, true),
@@ -269,6 +276,24 @@ for index, key in ipairs({ 'links', 'highlights' }) do
     assert(plugin.action_modes[key] == 'double_tap')
     assert(items[index].sub_item_table[3].checked_func())
 end
+items[1].sub_item_table[2].callback()
+assert(#items == 3 and conflicting_actions.sub_item_table_func() == items,
+    'choosing long press must add the threshold to the existing submenu when returning')
+local threshold = items[3]
+assert(threshold.enabled == false and not threshold.callback and threshold.help_text,
+    'the threshold must be read-only gray text with a hold explanation')
+assert(threshold.text_func() == 'Long-press movement threshold: 40 px')
+items[2].sub_item_table[2].callback()
+items[1].sub_item_table[3].callback()
+assert(#items == 3, 'the threshold stays visible while either action uses long press')
+items[2].sub_item_table[3].callback()
+assert(#items == 2, 'the threshold disappears when the last long-press binding changes')
+plugin:setActionMode('highlights', 'hold')
+assert(#conflicting_actions.sub_item_table_func() == 3,
+    'reopening the submenu must reflect bindings changed outside this menu')
+plugin:setLongPressMovementThreshold(55)
+assert(threshold.text_func() == 'Long-press movement threshold: 55 px',
+    'the information row must display the stored threshold')
 plugin:setEnabled(false)
 assert(not ui:dispatch(S.gesture('double_tap')) and not ui:dispatch(S.gesture('two_finger_tap')))
 print('Tap action tests passed (' .. combinations .. ' document/action/mode combinations plus persistence and selection checks)')

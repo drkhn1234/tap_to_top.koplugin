@@ -68,6 +68,7 @@ local TAP_TO_TOP_CORNER_HOLD_ZONES = {
 
 local TapToTop = WidgetContainer:extend{
     name = "tap_to_top",
+    version = "1.3.5",
     is_doc_only = true,
     settings_data = nil,
     enabled = DEFAULT_TAP_TO_TOP_ENABLED,
@@ -861,6 +862,26 @@ end
 
 function TapToTop:addToMainMenu(menu_items)
     local action_items = {}
+    local long_press_threshold_item = {
+        text_func = function()
+            return T(_("Long-press movement threshold: %1 px"), self.long_press_movement_threshold)
+        end,
+        enabled = false,
+        help_text = _("For actions assigned to long press, move this far before release to select text instead of performing the original tap action. A hold-drag selects immediately."),
+    }
+    local function refreshActionItems()
+        local uses_long_press = false
+        for action_index, action in ipairs(TAP_ACTIONS) do
+            if self.action_modes[action.key] == "hold" then
+                uses_long_press = true
+                break
+            end
+        end
+        -- Keep the same table so returning from a gesture choice updates visibility, too.
+        action_items[#TAP_ACTIONS + 1] = uses_long_press and long_press_threshold_item or nil
+        action_items[#TAP_ACTIONS].separator = uses_long_press
+        return action_items
+    end
     for action_index, action in ipairs(TAP_ACTIONS) do
         local action_key = action.key
         local action_title = action.title
@@ -877,6 +898,7 @@ function TapToTop:addToMainMenu(menu_items)
                 end,
                 callback = function(touchmenu_instance)
                     self:setActionMode(action_key, mode_key)
+                    refreshActionItems()
                     if touchmenu_instance then touchmenu_instance:updateItems() end
                 end,
             }
@@ -888,6 +910,7 @@ function TapToTop:addToMainMenu(menu_items)
             sub_item_table = modes,
         }
     end
+    refreshActionItems()
     local function tapRegionMarginItem(title, key, opposite_key)
         return {
             text_func = function()
@@ -933,9 +956,10 @@ function TapToTop:addToMainMenu(menu_items)
                 end,
             },
             {
-                text = _("Tap actions"),
+                text = _("Conflicting tap action"),
                 help_text = _("Inside the tap-to-top region, choose how to open links and saved highlights: keep their single tap, or move the original action to long press, double tap, or two-finger tap. Tap-to-top always uses a single tap. Outside the region, normal reader actions apply."),
                 sub_item_table = action_items,
+                sub_item_table_func = refreshActionItems,
             },
             {
                 text = _("Tap-to-top region"),
@@ -944,34 +968,12 @@ function TapToTop:addToMainMenu(menu_items)
                     tapRegionMarginItem(_("Right margin"), "tap_region_right_margin", "tap_region_left_margin"),
                     tapRegionMarginItem(_("Top margin"), "tap_region_top_margin", "tap_region_bottom_margin"),
                     tapRegionMarginItem(_("Bottom margin"), "tap_region_bottom_margin", "tap_region_top_margin"),
-                    {
-                        text_func = function()
-                            return T(
-                                _("Long-press movement threshold: %1 px"),
-                                self.long_press_movement_threshold
-                            )
-                        end,
-                        keep_menu_open = true,
-                        callback = function(touchmenu_instance)
-                            UIManager:show(SpinWidget:new{
-                                title_text = _("Long-press movement threshold"),
-                                info_text = _("For actions assigned to long press, move this far before release to select text instead of performing the original tap action. A hold-drag selects immediately."),
-                                value = self.long_press_movement_threshold,
-                                value_min = 5,
-                                value_max = math.max(200, math.floor(Screen:getWidth() / 3)),
-                                value_step = 5,
-                                value_hold_step = 20,
-                                unit = _("px"),
-                                default_value = DEFAULT_LONG_PRESS_MOVEMENT_THRESHOLD,
-                                callback = function(spin)
-                                    self:setLongPressMovementThreshold(spin.value)
-                                    if touchmenu_instance then touchmenu_instance:updateItems() end
-                                end,
-                            })
-                        end,
-                    },
                 },
                 separator = true,
+            },
+            {
+                text = T(_("Version: %1"), self.version),
+                enabled = false,
             },
         },
     }
