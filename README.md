@@ -1,27 +1,29 @@
 # Tap to top
 
 `tap_to_top.koplugin` moves a tapped text line to the top of the screen in
-KOReader's continuous/scroll mode.
+KOReader's continuous View Mode mode.
 
-```text
-Reader menu -> Scrolling -> Tap to top
-```
 
 ## Behavior and settings
 
-- Tap on a word/line to align (its page level) to the top of the screen. (The plugin is smart enough to detect word/page line height boundaries. Therefore, you don't have to be highly precise so as not to accidentally clip words half-way through the top edge of the screen, the plugin handles small margins of error. Tapping on whitespace or an image uses the exact tap position instead.) 
-- Left, right, top, and bottom percentage margins exclude parts of the screen.
-  Defaults are `20%` left, `20%` right, `0%` top, and `10%` bottom; the region
-  stays at least `5%` wide and high.
+- **Tap on a word/line to align (its page level) to the top of the screen.**
+> [!NOTE]
+> The plugin is smart enough to detect word/line height boundaries. It doesn't merely scroll pixels at tap position to top. Therefore, you don't have to be highly precise when tapping on line of words and worry if the words will be clipped by the edge of the screen.
+>
+> Taps on whitespace or images use the exact tap position.
+- In the plugin settings: left, right, top, and bottom margins exempt parts of the screen from the reach of the plugin, so that left/right page turns continue working without being affected by the new tap behaviour.
+
 - Top and bottom menu tap zones keep their normal behavior. Corner tap and long-press zones take priority when an action is assigned,
   unassigned corners remain part of the configured region.
-- Inside the tap-to-top region, links keep their original single-tap behavior
-  by default. Saved highlight properties open on long press instead. Both can
-  be configured independently under **Tap actions**.
-- Other long presses pass through to KOReader, preserving word selection,
-  dictionary lookup, images, hold-drag selection, and release behavior.
-- Both paged documents in continuous mode and reflowable documents in scroll mode
-  are supported. Mouse-wheel input keeps its normal behavior.
+> [!TIP]
+> If you find yourself accidentally activating Top or Bottom menus while using tap-to-top frequently on screen positions that happen to collide with KOReader Menu tap zones, a solution is to adjust Menu zone values at:\
+> `Top Panel > Tools > More tools > Advance settings`, these keys:
+> 
+>  <img width="348" height="276" alt="image" src="https://github.com/user-attachments/assets/2f9faad7-c30d-4fe6-bda5-0cff823a2826"/> <br> 
+>  **_MENU** is for *TOP MENU*,&ensp;**_CONFIG** is for *BOTTOM MENU*.&ensp;**_EXT** suffix is for secondary zones of both TOP and BOTTOM menus, its values can be set to 0 for a better experience with the plugin
+- Inside the tap-to-top region, activating Highlighted Text Menu is done by a long press instead of a tap in order to not conflict with the plugin behaviour (outside the tap-to-tap region, it still uses a tap to activate). Links keep their original single-tap behavior
+  by default. Both can be configured independently under **Tap actions** in the plugin settings page.
+- Both non-reflowable (PDF, DJVU, etc.) and reflowable (EPUB, MOBI, etc.) are supported.
 
 ## Tap actions
 
