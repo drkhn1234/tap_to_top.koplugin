@@ -21,7 +21,7 @@ KOReader's continuous View Mode mode.
 > 
 >  <img width="348" height="276" alt="image" src="https://github.com/user-attachments/assets/2f9faad7-c30d-4fe6-bda5-0cff823a2826"/> <br> 
 >  **_MENU** is for *TOP MENU*,&ensp;**_CONFIG** is for *BOTTOM MENU*.&ensp;**_EXT** suffix is for extra/secondary zones of TOP and BOTTOM menus, it is recommended to disable extra/secondary zones by setting its values to 0 for a better plugin experience.
-- Inside the tap-to-top region, activating Highlighted Text Menu is done by a long press instead of a tap in order to not conflict with the plugin behaviour (outside the tap-to-tap region, it still uses a tap to activate). Links keep their original single-tap behavior
+- Inside the tap-to-top region, opening Highlight menu is done by long press instead of a tap in order to not conflict with the plugin behaviour (outside the tap-to-tap region, it still uses tap to open). Links keep their original single-tap behavior
   by default. Both can be configured independently under **Tap actions** in the plugin settings page.
 - Both non-reflowable (PDF, DJVU, etc.) and reflowable (EPUB, MOBI, etc.) are supported.
 
@@ -53,19 +53,6 @@ mode. Single taps then wait for KOReader's usual double-tap interval. Choosing
 two-finger tap enables combined two-finger recognition; that choice is available
 on multitouch devices. The reader's previous gesture settings are restored when
 the feature is disabled or no longer needs those gestures.
-
-## Upgrading from the combined velocity scroll plugin
-
-Install this plugin alongside the updated velocity scroll plugin. On first use,
-it imports the tap enable state, four region margins, and long-press movement
-threshold from `settings/velocity_scroll.lua`. The older
-`long_press_sideways_threshold` setting is also supported. Existing tap-to-top
-settings take priority, and migration never writes to the velocity settings file.
-
-Keep the old settings file until the first import completes. Later changes are
-saved independently in `settings/tap_to_top.lua`; velocity scroll can then be
-uninstalled if you only want tap-to-top. Use the split version of velocity scroll
-when running both plugins together, so the old combined tap handler is removed.
 
 ## Tests
 
