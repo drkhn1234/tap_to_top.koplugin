@@ -23,7 +23,7 @@ KOReader's *continuous* View Mode.
     <td width="50%"><img src="docs/demos/tap-to-top-conflicting-actions.gif" width="360" alt="Double tap is selected by default for saved highlights; two quick taps open the highlight menu."></td>
   </tr>
   <tr>
-    <th colspan="2">Dictionary lookup inside highlights</th>
+    <th colspan="2">Dictionary lookup inside highlights (when open highlight menu action is assigned long-press)</th>
   </tr>
   <tr>
     <td colspan="2" align="center"><img src="docs/demos/tap-to-top-highlight-dictionary.gif" width="480" alt="With highlights bound to long press, hold a word, move past the 32 px threshold within that word, and release to open its dictionary entry."></td>
