@@ -9,8 +9,7 @@ Reader menu -> Scrolling -> Tap to top
 
 ## Behavior and settings
 
-- A tap inside the configured region aligns the top of the tapped word with the
-  top of the screen. Whitespace uses the tap position instead.
+- Tap on a word/line to align (its page level) to the top of the screen. (The plugin is smart enough to detect word/page line height boundaries. Therefore, you don't have to be highly precise so as not to accidentally clip words half-way through the top edge of the screen, the plugin handles small margins of error. Tapping on whitespace or an image uses the exact tap position instead.) 
 - Left, right, top, and bottom percentage margins exclude parts of the screen.
   Defaults are `20%` left, `20%` right, `0%` top, and `10%` bottom; the region
   stays at least `5%` wide and high.
