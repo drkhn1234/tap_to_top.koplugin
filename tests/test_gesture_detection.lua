@@ -6,9 +6,12 @@ package.preload.util = function() return {} end
 package.preload['ffi/posix_h'] = function() return {} end
 package.preload.optmath = function() return dofile(frontend .. '/optmath.lua') end
 package.preload['ui/geometry'] = function() return dofile(frontend .. '/ui/geometry.lua') end
+package.preload.depgraph = function() return dofile(frontend .. '/depgraph.lua') end
+package.preload['ui/gesturerange'] = function() return dofile(frontend .. '/ui/gesturerange.lua') end
 G_reader_settings = { readSetting = function() return nil end }
 local time = require('ui/time')
 time.s, time.huge = function(value) return value end, math.huge
+S.registerTouchZones = dofile(frontend .. '/ui/widget/container/inputcontainer.lua').registerTouchZones
 S.Device.screen.scaleByDPI = function(_, value) return value end
 local Detector = dofile(frontend .. '/device/gesturedetector.lua')
 S.reset()

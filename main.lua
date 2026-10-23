@@ -212,7 +212,7 @@ function TapToTop:isDesktopTwoFingerTarget(detector, pos)
         return false
     end
     local tap = detector:adjustGesCoordinate({
-        ges = "tap", pos = { x = pos.x, y = pos.y },
+        ges = "tap", pos = { x = pos.x, y = pos.y, w = 0, h = 0 },
     })
     if not self:isInTapToTopRegion(tap) or self:shouldPreserveTapZone(tap) then return false end
     local action = self:getNativeTapAction(tap)
