@@ -17,6 +17,7 @@ function UIManager:scheduleIn(delay, callback, owner)
 end
 function UIManager:unschedule(callback) Support.scheduled[callback] = nil end
 function UIManager:nextTick(callback) callback() end
+function UIManager:getTopmostVisibleWidget() return Support.top_widget end
 UIManager.setDirty, UIManager.show = noop, noop
 Support.UIManager = UIManager
 local screen = {
@@ -24,7 +25,11 @@ local screen = {
     getWidth = function() return 600 end,
     scaleBySize = function(_, value) return value end,
 }
-local device = { screen = screen, isTouchDevice = function() return true end }
+local device = {
+    screen = screen, input = {},
+    isTouchDevice = function() return true end,
+    hasMultitouch = function() return true end,
+}
 Support.Device = device
 package.preload.datastorage = function() return { getSettingsDir = function() return '/settings' end } end
 package.preload.device = function() return device end
@@ -71,6 +76,9 @@ end
 function Support.reset()
     Support.settings, Support.scheduled, Support.actions = {}, {}, {}
     UIManager.currently_scrolling = false
+    Support.top_widget = nil
+    device.input.disable_double_tap = true
+    device.input.allow_concurrent_taps = false
 end
 function Support.tick(callback)
     local timer = assert(Support.scheduled[callback], 'timer was not scheduled')

@@ -106,6 +106,7 @@ ui.highlight = {
 assert(not ui:dispatch(S.gesture('hold')), 'ordinary hold must pass through to native selection')
 assert(not ui:dispatch(S.gesture('hold_pan')) and not ui:dispatch(S.gesture('hold_release')))
 assert(holds == 0 and drags == 0 and releases == 0)
+plugin:setActionMode('links', 'hold')
 ui.link = {
     getLinkFromGes = function() return {} end,
     onTap = function() links = links + 1; return true end,
