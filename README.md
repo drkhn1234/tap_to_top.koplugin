@@ -20,11 +20,17 @@ KOReader's *continuous* View Mode.
   </tr>
   <tr>
     <td width="50%"><img src="docs/demos/tap-to-top-images-pdf.gif" width="360" alt="Tap an image detail, then a line on the next visible PDF page, to move each position to the top."></td>
-    <td width="50%"><img src="docs/demos/tap-to-top-conflicting-actions.gif" width="360" alt="Choose two-finger tap for saved highlights, then right-click a highlight to open its menu."></td>
+    <td width="50%"><img src="docs/demos/tap-to-top-conflicting-actions.gif" width="360" alt="Double tap is selected by default for saved highlights; two quick taps open the highlight menu."></td>
+  </tr>
+  <tr>
+    <th colspan="2">Dictionary lookup inside highlights</th>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="docs/demos/tap-to-top-highlight-dictionary.gif" width="480" alt="With highlights bound to long press, hold a word, move past the 32 px threshold within that word, and release to open its dictionary entry."></td>
   </tr>
 </table>
 
-Captured in KOReader with Tap to top v1.3.6. Teal markers show where to tap.
+Captured in KOReader. Teal markers show where to tap, hold, and move.
 
 ## Behavior and settings
 
@@ -66,10 +72,20 @@ On PC, **Two-finger tap (right-click)** also accepts the touchpad's two-finger
 tap or a mouse right-click on the link or saved highlight.
 
 Long presses assigned to an action run on release. Dragging starts text
-selection when the drag distance exceeds **Long-press movement
+selection when the drag distance reaches **Long-press movement
 threshold** hence you can select text even when long press is bound to open link or highlight menu action.
-The threshold value setting appears as a read-only, faded button
-in **Conflicting tap actions** unless at least one action uses long press.
+The threshold defaults to **32 px**. Its button is always visible in
+**Conflicting tap actions**: faded when no action uses long press, and active
+and editable when at least one does. Hold the button for an explanation.
+
+To look up a single word inside a saved highlight while its menu uses
+**Long press**, hold the word, move past the threshold while staying within
+that word, and release. The dictionary opens for that word. Dragging across
+words selects a passage instead. A stationary long press opens the highlight
+menu.
+
+New installs use **Double tap** for saved highlights. Existing saved choices
+are retained when upgrading.
 
 ## Tests
 

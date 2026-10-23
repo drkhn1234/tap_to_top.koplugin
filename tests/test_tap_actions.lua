@@ -112,7 +112,7 @@ for _, document_mode in ipairs({ 'rolling', 'paging' }) do
     end
 end
 local plugin, ui, calls = create('rolling', 'links')
-assert(plugin.action_modes.links == 'tap' and plugin.action_modes.highlights == 'hold')
+assert(plugin.action_modes.links == 'tap' and plugin.action_modes.highlights == 'double_tap')
 ui:dispatch(S.gesture('tap'))
 assert(calls.links == 1 and #ui.scrolls == 0, 'links retain their native tap by default')
 plugin, ui, calls = create('rolling', 'nearby_link')
@@ -127,13 +127,13 @@ assert(calls.links == 1 and calls.highlights == 0)
 plugin, ui, calls = create('paging', 'plain', {
     links = 'none', highlights = 'none', page_turns = 'two_finger_tap',
 })
-assert(plugin.action_modes.links == 'tap' and plugin.action_modes.highlights == 'hold')
+assert(plugin.action_modes.links == 'tap' and plugin.action_modes.highlights == 'double_tap')
 assert(plugin.action_modes.page_turns == nil)
 assert(S.settings['/settings/tap_to_top.lua'].action_modes.page_turns == nil)
 plugin:setActionMode('links', 'none')
 plugin:setActionMode('highlights', 'none')
 plugin:setActionMode('page_turns', 'tap')
-assert(plugin.action_modes.links == 'tap' and plugin.action_modes.highlights == 'hold'
+assert(plugin.action_modes.links == 'tap' and plugin.action_modes.highlights == 'double_tap'
     and plugin.action_modes.page_turns == nil, 'removed choices cannot disable actions or restore page turns')
 ui:dispatch(S.gesture('tap', 350, 500))
 assert(#ui.scrolls == 1 and calls.forward == 0 and calls.backward == 0)
@@ -161,14 +161,45 @@ activate(ui, 'hold', 350)
 assert(calls.hold == 1 and calls.release == 1 and calls.highlights == 0)
 plugin:setActionMode('highlights', 'hold')
 ui:dispatch(S.gesture('hold', 350, 500))
-ui:dispatch(S.gesture('hold_pan', 351, 500))
-ui:dispatch(S.gesture('hold_release', 351, 500))
+ui:dispatch(S.gesture('hold_pan', 381, 500))
+assert(calls.hold == 1 and calls.drag == 0, 'small hold movements must keep the original action pending')
+ui:dispatch(S.gesture('hold_pan', 382, 500))
+ui:dispatch(S.gesture('hold_release', 382, 500))
 assert(calls.hold == 2 and calls.drag == 1 and calls.release == 2 and calls.highlights == 0)
+ui:dispatch(S.gesture('hold', 350, 500))
+ui:dispatch(S.gesture('hold_pan', 381, 500))
+ui:dispatch(S.gesture('hold_release', 381, 500))
+assert(calls.highlights == 1 and calls.hold == 2,
+    'releasing below the threshold must perform the original highlight action')
 ui:dispatch(S.gesture('hold', 350, 500))
 plugin:setActionMode('highlights', 'tap')
 assert(not plugin.tap_hold_tracking, 'changing settings cancels pending replacement actions')
 ui:dispatch(S.gesture('hold_release', 350, 500))
-assert(calls.highlights == 0)
+assert(calls.highlights == 1)
+
+-- KOReader marks hold-pans as range selections, including pans within one word.
+-- The plugin must keep dictionary lookup when crossing its threshold stays in that word.
+plugin, ui = create('rolling', 'highlights', { highlights = 'hold' })
+local dictionary_lookups, range_selections = 0, 0
+ui.highlight.onHold = function(self)
+    self.is_word_selection = true
+    self.selected_text = { text = 'attention' }
+end
+ui.highlight.onHoldPan = function(self, unused, ges)
+    self.is_word_selection = false
+    self.selected_text = { text = ges.pos.x < 400 and 'attention' or 'attention room' }
+end
+ui.highlight.onHoldRelease = function(self)
+    if self.is_word_selection then dictionary_lookups = dictionary_lookups + 1
+    else range_selections = range_selections + 1 end
+end
+for _, endpoint in ipairs({ 390, 430 }) do
+    ui:dispatch(S.gesture('hold', 350, 500))
+    ui:dispatch(S.gesture('hold_pan', endpoint, 500))
+    ui:dispatch(S.gesture('hold_release', endpoint, 500))
+end
+assert(dictionary_lookups == 1 and range_selections == 1,
+    'a single word opens the dictionary while a passage keeps native range selection')
 
 -- Gesture detection changes only for contacts in the region; preferences stay native.
 plugin, ui = create('rolling', 'highlights', {}, { disable_double_tap = true, allow_concurrent_taps = true })
@@ -266,8 +297,11 @@ assert(conflicting_actions.text == 'Conflicting tap actions' and conflicting_act
 assert(#root_items[3].sub_item_table == 4, 'the region submenu must contain only screen margins')
 assert(root_items[4].enabled == false and root_items[4].text:find(plugin.version, 1, true),
     'the main plugin settings must show the installed version as information')
-local items = conflicting_actions.sub_item_table_func()
-assert(#items == 2, 'only conflicting link and highlight actions belong in this menu')
+local items = conflicting_actions.sub_item_table
+assert(#items == 3, 'both conflicting actions and the threshold must always appear')
+local threshold = items[3]
+assert(not threshold.enabled_func() and threshold.help_text,
+    'the threshold must be gray when neither action uses long press')
 for index, key in ipairs({ 'links', 'highlights' }) do
     assert(items[index].text_func():find(index == 1 and 'Links' or 'Saved highlights', 1, true),
         'rendering each action row must use gettext and its own title')
@@ -277,23 +311,20 @@ for index, key in ipairs({ 'links', 'highlights' }) do
     assert(items[index].sub_item_table[3].checked_func())
 end
 items[1].sub_item_table[2].callback()
-assert(#items == 3 and conflicting_actions.sub_item_table_func() == items,
-    'choosing long press must add the threshold to the existing submenu when returning')
-local threshold = items[3]
-assert(threshold.enabled == false and not threshold.callback and threshold.help_text,
-    'the threshold must be read-only gray text with a hold explanation')
-assert(threshold.text_func() == 'Long-press movement threshold: 40 px')
+assert(threshold.enabled_func() and threshold.callback,
+    'choosing long press must activate the threshold editor')
+assert(threshold.text_func() == 'Long-press movement threshold: 32 px')
 items[2].sub_item_table[2].callback()
 items[1].sub_item_table[3].callback()
-assert(#items == 3, 'the threshold stays visible while either action uses long press')
+assert(threshold.enabled_func(), 'the threshold stays active while either action uses long press')
 items[2].sub_item_table[3].callback()
-assert(#items == 2, 'the threshold disappears when the last long-press binding changes')
+assert(#items == 3 and not threshold.enabled_func(),
+    'the threshold stays visible but becomes gray when the last long-press binding changes')
 plugin:setActionMode('highlights', 'hold')
-assert(#conflicting_actions.sub_item_table_func() == 3,
-    'reopening the submenu must reflect bindings changed outside this menu')
+assert(threshold.enabled_func(), 'the threshold must reflect bindings changed outside this menu')
 plugin:setLongPressMovementThreshold(55)
 assert(threshold.text_func() == 'Long-press movement threshold: 55 px',
-    'the information row must display the stored threshold')
+    'the threshold row must display the stored value')
 plugin:setEnabled(false)
 assert(not ui:dispatch(S.gesture('double_tap')) and not ui:dispatch(S.gesture('two_finger_tap')))
 print('Tap action tests passed (' .. combinations .. ' document/action/mode combinations plus persistence and selection checks)')
