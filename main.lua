@@ -68,7 +68,7 @@ local TAP_TO_TOP_CORNER_HOLD_ZONES = {
 
 local TapToTop = WidgetContainer:extend{
     name = "tap_to_top",
-    version = "1.3.5",
+    version = "1.3.6",
     is_doc_only = true,
     settings_data = nil,
     enabled = DEFAULT_TAP_TO_TOP_ENABLED,
@@ -956,7 +956,7 @@ function TapToTop:addToMainMenu(menu_items)
                 end,
             },
             {
-                text = _("Conflicting tap action"),
+                text = _("Conflicting tap actions"),
                 help_text = _("Inside the tap-to-top region, choose how to open links and saved highlights: keep their single tap, or move the original action to long press, double tap, or two-finger tap. Tap-to-top always uses a single tap. Outside the region, normal reader actions apply."),
                 sub_item_table = action_items,
                 sub_item_table_func = refreshActionItems,
