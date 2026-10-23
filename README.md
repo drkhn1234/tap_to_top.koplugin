@@ -28,7 +28,8 @@ its menu is available only in continuous/scroll mode on touch devices.
 - A tap inside the configured region aligns the top of the tapped word with the
   top of the screen. Whitespace uses the tap position instead.
 - Left, right, top, and bottom percentage margins exclude parts of the screen.
-  Each defaults to `0%`; the region stays at least `5%` wide and high.
+  Defaults are `20%` left, `20%` right, `0%` top, and `10%` bottom; the region
+  stays at least `5%` wide and high.
 - Reader menu and footer tap zones keep their normal behavior. Gesture Manager
   corner tap and long-press zones take priority when an action is assigned;
   unassigned corners remain part of the configured region.
@@ -38,7 +39,7 @@ its menu is available only in continuous/scroll mode on touch devices.
   dictionary lookup, images, hold-drag selection, and release behavior.
 - Dragging a held link or highlight switches to native text selection and
   forwards the first movement. Release-only movement uses the configurable
-  long-press movement threshold, which defaults to device-scaled `20 px`.
+  long-press movement threshold, which defaults to `40 px`.
 - A pan cannot also trigger tap-to-top. With velocity scroll installed, a tap
   interrupting a velocity gesture stops scrolling without moving the tapped line.
 - Both paged documents in continuous mode and reflowable documents in scroll mode

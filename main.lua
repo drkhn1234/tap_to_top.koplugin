@@ -17,8 +17,13 @@ local Screen = Device.screen
 local SETTINGS_PATH = ffiUtil.joinPath(DataStorage:getSettingsDir(), "tap_to_top.lua")
 local LEGACY_SETTINGS_PATH = ffiUtil.joinPath(DataStorage:getSettingsDir(), "velocity_scroll.lua")
 local DEFAULT_TAP_TO_TOP_ENABLED = false
-local DEFAULT_TAP_REGION_MARGIN = 0
-local DEFAULT_LONG_PRESS_MOVEMENT_THRESHOLD = Screen:scaleBySize(20)
+local DEFAULT_TAP_REGION_MARGINS = {
+    tap_region_left_margin = 20,
+    tap_region_right_margin = 20,
+    tap_region_top_margin = 0,
+    tap_region_bottom_margin = 10,
+}
+local DEFAULT_LONG_PRESS_MOVEMENT_THRESHOLD = 40
 local MIN_TAP_REGION_SIZE_PERCENT = 5
 
 local TAP_TO_TOP_UI_TAP_ZONES = {
@@ -49,10 +54,10 @@ local TapToTop = WidgetContainer:extend{
     is_doc_only = true,
     settings_data = nil,
     enabled = DEFAULT_TAP_TO_TOP_ENABLED,
-    tap_region_left_margin = DEFAULT_TAP_REGION_MARGIN,
-    tap_region_right_margin = DEFAULT_TAP_REGION_MARGIN,
-    tap_region_top_margin = DEFAULT_TAP_REGION_MARGIN,
-    tap_region_bottom_margin = DEFAULT_TAP_REGION_MARGIN,
+    tap_region_left_margin = DEFAULT_TAP_REGION_MARGINS.tap_region_left_margin,
+    tap_region_right_margin = DEFAULT_TAP_REGION_MARGINS.tap_region_right_margin,
+    tap_region_top_margin = DEFAULT_TAP_REGION_MARGINS.tap_region_top_margin,
+    tap_region_bottom_margin = DEFAULT_TAP_REGION_MARGINS.tap_region_bottom_margin,
     long_press_movement_threshold = DEFAULT_LONG_PRESS_MOVEMENT_THRESHOLD,
     tap_hold_tracking = nil,
     tap_to_top_suppressed = false,
@@ -93,10 +98,9 @@ function TapToTop:init()
     self.settings_data = LuaSettings:open(SETTINGS_PATH)
     self:migrateLegacySettings()
     self.enabled = self.settings_data:readSetting("enabled", DEFAULT_TAP_TO_TOP_ENABLED)
-    self.tap_region_left_margin = self.settings_data:readSetting("tap_region_left_margin", DEFAULT_TAP_REGION_MARGIN)
-    self.tap_region_right_margin = self.settings_data:readSetting("tap_region_right_margin", DEFAULT_TAP_REGION_MARGIN)
-    self.tap_region_top_margin = self.settings_data:readSetting("tap_region_top_margin", DEFAULT_TAP_REGION_MARGIN)
-    self.tap_region_bottom_margin = self.settings_data:readSetting("tap_region_bottom_margin", DEFAULT_TAP_REGION_MARGIN)
+    for key, default in pairs(DEFAULT_TAP_REGION_MARGINS) do
+        self[key] = self.settings_data:readSetting(key, default)
+    end
     self.long_press_movement_threshold = math.max(1, self.settings_data:readSetting(
         "long_press_movement_threshold", DEFAULT_LONG_PRESS_MOVEMENT_THRESHOLD
     ))
@@ -572,16 +576,17 @@ function TapToTop:addToMainMenu(menu_items)
             end,
             keep_menu_open = true,
             callback = function(touchmenu_instance)
+                local max_margin = 100 - MIN_TAP_REGION_SIZE_PERCENT - self[opposite_key]
                 UIManager:show(SpinWidget:new{
                     title_text = title,
                     info_text = _("Screen margin excluded from the tap-to-top region."),
                     value = self[key],
                     value_min = 0,
-                    value_max = 100 - MIN_TAP_REGION_SIZE_PERCENT - self[opposite_key],
+                    value_max = max_margin,
                     value_step = 1,
                     value_hold_step = 5,
                     unit = "%",
-                    default_value = DEFAULT_TAP_REGION_MARGIN,
+                    default_value = math.min(DEFAULT_TAP_REGION_MARGINS[key], max_margin),
                     callback = function(spin)
                         self:setTapRegionMargin(key, opposite_key, spin.value)
                         if touchmenu_instance then touchmenu_instance:updateItems() end

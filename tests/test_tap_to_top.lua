@@ -97,7 +97,7 @@ ui:dispatch(S.gesture('hold_pan', 301, 500))
 ui:dispatch(S.gesture('hold_release', 301, 500))
 assert(holds == 1 and drags == 1 and releases == 1 and links == 1, 'hold-drag forwards native selection')
 ui:dispatch(S.gesture('hold'))
-ui:dispatch(S.gesture('hold_release', 330, 500))
+ui:dispatch(S.gesture('hold_release', 340, 500))
 assert(holds == 2 and releases == 2 and links == 1, 'release movement threshold starts selection')
 ui.link = nil
 ui.view.highlight = { visible_boxes = { { index = 1, rect = { x = 290, y = 490, w = 20, h = 20 } } } }
