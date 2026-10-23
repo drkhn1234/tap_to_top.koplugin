@@ -27,7 +27,7 @@ KOReader's continuous View Mode mode.
 
 ## Tap actions
 
-### `Top Panel > Taps and gestures > Scrolling > Tap to top > Tap actions`
+### `Top Panel > Settings > Taps and gestures > Scrolling > Tap to top > Tap actions`
 
 Configure touch input (long press, double tap, two-finger tap) for interacting with **Links**, **Text Highlights**, and **Page turns**:
 
