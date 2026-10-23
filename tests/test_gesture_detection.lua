@@ -11,7 +11,9 @@ package.preload['ui/gesturerange'] = function() return dofile(frontend .. '/ui/g
 G_reader_settings = { readSetting = function() return nil end }
 local time = require('ui/time')
 time.s, time.huge = function(value) return value end, math.huge
-S.registerTouchZones = dofile(frontend .. '/ui/widget/container/inputcontainer.lua').registerTouchZones
+local InputContainer = dofile(frontend .. '/ui/widget/container/inputcontainer.lua')
+package.loaded['ui/widget/container/inputcontainer'] = InputContainer
+S.registerTouchZones = InputContainer.registerTouchZones
 S.Device.screen.scaleByDPI = function(_, value) return value end
 local Detector = dofile(frontend .. '/device/gesturedetector.lua')
 S.reset()
@@ -59,9 +61,28 @@ local detector = Detector:new{
 input.gesture_detector = detector
 local original_feed_event = detector.feedEvent
 plugin:registerDesktopMouseInput()
+-- The global screenshot listener sees gestures before the reader's touch zones.
+-- Use its real rate/span filters so converted mouse gestures satisfy the whole
+-- two-finger payload contract, even when the reader later consumes the gesture.
+package.preload['ui/bidi'] = function() return {} end
+package.preload['ui/widget/buttondialog'] = function() return {} end
+package.preload['apps/filemanager/filemanagerutil'] = function() return {} end
+require('datastorage').getFullDataDir = function() return '/test-data' end
+S.Device.hasKeyboard = function() return false end
+S.Device.hasScreenKB = function() return false end
+local Screenshoter = dofile(frontend .. '/ui/widget/screenshoter.lua')
+local screenshoter = Screenshoter:new{ key_events = {}, _ordered_touch_zones = {} }
+local screenshots = 0
+function screenshoter:handleEvent()
+    screenshots = screenshots + 1
+    return true
+end
 local function dispatch(ges)
     if ges and desktop then ges = detector:adjustGesCoordinate(ges) end
-    if ges then emitted[#emitted + 1] = ges.ges; ui:dispatch(ges) end
+    if ges then
+        emitted[#emitted + 1] = ges.ges
+        if not screenshoter:onGesture(ges) then ui:dispatch(ges) end
+    end
 end
 local function feed(slot, id, at, x)
     slots[slot] = slots[slot] or { slot = slot }
@@ -224,6 +245,7 @@ if desktop then
     ui.view.view_mode = 'scroll'
 end
 plugin:onCloseDocument()
+assert(screenshots == 0, 'normal taps and right-click aliases must not trigger the screenshot shortcut')
 assert(detector.feedEvent == original_feed_event, 'desktop input wrapper must be removed on document close')
 assert(ui.disable_double_tap == true and ui.allow_concurrent_taps == true)
 print('Native gesture detection tests passed (inside actions and unchanged outside timing/multitouch'

@@ -245,7 +245,13 @@ function TapToTop:registerDesktopMouseInput()
             if contact then contact.tap_to_top_right_click = true end
             if mapped then
                 for _, ges in ipairs(gestures) do
-                    if ges.ges == "tap" then ges.ges = "two_finger_tap" end
+                    if ges.ges == "tap" then
+                        ges.ges = "two_finger_tap"
+                        -- Native two-finger gestures include a span. A mouse
+                        -- click has no finger separation; global listeners
+                        -- (e.g., the screenshot shortcut) still require it.
+                        ges.span = 0
+                    end
                 end
             end
         end
