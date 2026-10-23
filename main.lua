@@ -433,6 +433,20 @@ function TapToTop:getTappedLineY(ges)
     else
         screen_box = word.sbox
     end
+
+    -- Some document engines return the nearest word even when the tap is on
+    -- an image or in whitespace. Only snap to that word's line when the tap
+    -- actually landed inside its box; otherwise keep the tapped screen y.
+    if screen_box and screen_box.x ~= nil and screen_box.y ~= nil
+            and screen_box.w ~= nil and screen_box.h ~= nil then
+        local tolerance = 1
+        if screen_pos.x < screen_box.x - tolerance
+                or screen_pos.x > screen_box.x + screen_box.w + tolerance
+                or screen_pos.y < screen_box.y - tolerance
+                or screen_pos.y > screen_box.y + screen_box.h + tolerance then
+            return tap_y
+        end
+    end
     return (screen_box and screen_box.y) or tap_y
 end
 
