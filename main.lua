@@ -148,7 +148,7 @@ function TapToTop:init()
     self.ui:registerPostReaderReadyCallback(function()
         self:registerTouchZones()
         self:updateGestureDetection()
-        self:registerDesktopMouseInput()
+        self:registerGestureInput()
     end)
 end
 
@@ -198,16 +198,16 @@ end
 
 function TapToTop:onCloseDocument()
     self:updateGestureDetection()
-    self.desktop_mouse_active = false
-    if self.desktop_detector and self.desktop_detector.feedEvent == self.desktop_feed_event then
-        self.desktop_detector.feedEvent = self.desktop_original_feed_event
+    self.gesture_input_active = false
+    if self.gesture_detector and self.gesture_detector.feedEvent == self.gesture_feed_event then
+        self.gesture_detector.feedEvent = self.original_gesture_feed_event
     end
     self.tap_hold_tracking = nil
     self.tap_to_top_suppressed = false
 end
 
 function TapToTop:isDesktopTwoFingerTarget(detector, pos)
-    if not self.desktop_mouse_active or not self.enabled or not self:isContinuousMode()
+    if not self.gesture_input_active or not self.enabled or not self:isContinuousMode()
             or UIManager:getTopmostVisibleWidget() ~= self.ui then
         return false
     end
@@ -219,26 +219,37 @@ function TapToTop:isDesktopTwoFingerTarget(detector, pos)
     return action and self.action_modes[action] == "two_finger_tap" or false
 end
 
-function TapToTop:registerDesktopMouseInput()
+function TapToTop:registerGestureInput()
     local input = Device.input
     local detector = input and input.gesture_detector
-    if not IS_DESKTOP_SDL or not detector or self.desktop_detector then return end
-    self.desktop_mouse_active = true
-    self.desktop_detector = detector
-    self.desktop_original_feed_event = detector.feedEvent
-    self.desktop_feed_event = function(this, events)
-        -- SDL translates the right mouse button to slot 1, tracking ID 1.
-        -- A standalone contact is a click; paired contacts keep native multitouch.
+    if not detector or self.gesture_detector then return end
+    self.gesture_input_active = true
+    self.gesture_detector = detector
+    self.original_gesture_feed_event = detector.feedEvent
+    self.gesture_feed_event = function(this, events)
+        if not self.gesture_input_active then return self.original_gesture_feed_event(this, events) end
         local event = #events == 1 and events[1]
         local contact = event and this:getContact(event.slot)
-        local right_click = event and event.slot == 1
+        -- While waiting for a second tap, KOReader reuses the contact and omits
+        -- its touch event. Recheck that second down so a tap beside the original
+        -- target becomes immediate rather than inheriting its double-tap wait.
+        if event and contact and contact.pending_double_tap_timer
+                and not contact.down and event.id ~= -1 then
+            self:updateGestureDetection(this:adjustGesCoordinate({
+                ges = "touch", time = event.timev,
+                pos = { x = event.x, y = event.y, w = 0, h = 0 },
+            }))
+        end
+        -- SDL translates the right mouse button to slot 1, tracking ID 1.
+        -- A standalone contact is a click; paired contacts keep native multitouch.
+        local right_click = IS_DESKTOP_SDL and event and event.slot == 1
             and (contact and contact.tap_to_top_right_click
                 or not contact and event.id == 1 and not this:getContact(0))
         local mapped = right_click and self:isDesktopTwoFingerTarget(this, event)
         local disable_double_tap = input.disable_double_tap
         -- A right-click is already a complete secondary click: emit it on release.
         if mapped then input.disable_double_tap = true end
-        local gestures = self.desktop_original_feed_event(this, events)
+        local gestures = self.original_gesture_feed_event(this, events)
         if mapped then input.disable_double_tap = disable_double_tap end
         if right_click then
             contact = this:getContact(1)
@@ -257,7 +268,7 @@ function TapToTop:registerDesktopMouseInput()
         end
         return gestures
     end
-    detector.feedEvent = self.desktop_feed_event
+    detector.feedEvent = self.gesture_feed_event
 end
 
 function TapToTop:updateGestureDetection(ges)
@@ -267,7 +278,7 @@ function TapToTop:updateGestureDetection(ges)
     -- Restore the previous contact's flags before deciding about this one.
     -- Reader/widget preferences stay unchanged, including while menus are open.
     for key, override in pairs(self.input_overrides) do
-        if input and reader_on_top and input[key] == false then
+        if input and reader_on_top and input[key] == override.forced then
             input[key] = override.value
         end
         self.input_overrides[key] = nil
@@ -276,16 +287,27 @@ function TapToTop:updateGestureDetection(ges)
             or not self:isContinuousMode() or not self:isInTapToTopRegion(ges) then
         return
     end
-    if self:shouldPreserveTapZone(self:asTapGesture(ges)) then return end
+    local tap = self:asTapGesture(ges)
+    if self:shouldPreserveTapZone(tap) then return end
 
-    -- Detection is needed only for a contact starting inside our region.
-    -- In particular, an outside tap must retain its usual timing and behavior.
+    -- Only a link or highlight assigned to double tap needs the wait. Normal
+    -- tap-to-top contacts are immediate, including with native doubles enabled.
+    local action = self:getNativeTapAction(tap)
+    local disable_double_tap = not (action and self.action_modes[action] == "double_tap")
+    if input.disable_double_tap ~= disable_double_tap then
+        self.input_overrides.disable_double_tap = {
+            value = input.disable_double_tap, forced = disable_double_tap,
+        }
+        input.disable_double_tap = disable_double_tap
+    end
+    -- Two-finger targeting uses the midpoint, so allow the pair to form before
+    -- testing its target. This does not introduce a single-tap timeout.
     for _, mode in pairs(self.action_modes) do
-        local key = mode == "double_tap" and "disable_double_tap"
-            or mode == "two_finger_tap" and "allow_concurrent_taps"
-        if key and input[key] then
-            self.input_overrides[key] = { value = input[key] }
-            input[key] = false
+        if mode == "two_finger_tap" and input.allow_concurrent_taps then
+            self.input_overrides.allow_concurrent_taps = {
+                value = input.allow_concurrent_taps, forced = false,
+            }
+            input.allow_concurrent_taps = false
         end
     end
 end
