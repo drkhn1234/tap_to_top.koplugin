@@ -40,7 +40,7 @@ KOReader's *continuous* View Mode.
 - Top and bottom menu tap zones keep their normal behavior. Corner tap and long-press zones take priority when an action is assigned,
   unassigned corners remain part of the configured region.
 > [!TIP]
-> If you find yourself accidentally activating Top or Bottom menus while using tap-to-top frequently on screen positions that happen to collide with KOReader Menu tap zones, a solution is to adjust Menu zone values at:\
+> If you find yourself accidentally activating Top or Bottom menus while using tap-to-top frequently on screen positions that happen to collide with KOReader Menu tap zones, a solution is to adjust Menu zone height values at:\
 > (outside reader view) `Top Panel > Tools > More tools > Advance settings`, these keys:
 > 
 >  <img width="348" height="276" alt="image" src="https://github.com/user-attachments/assets/2f9faad7-c30d-4fe6-bda5-0cff823a2826"/> <br> 
@@ -56,7 +56,7 @@ Choose how to open **Links** and **Highlight menu** inside the tap-to-top
 active region:
 
 - **Keep original single tap** leaves that action on single tap instead of
-  scrolling the tapped link's line to the top.
+  scrolling the tapped link/highlight's line to the top.
 - **Long press**, **Double tap**, or **Two-finger tap** moves the original action to the selected gesture.
 
 **Links** respects KOReader's native **Tap to follow links** setting. When it
